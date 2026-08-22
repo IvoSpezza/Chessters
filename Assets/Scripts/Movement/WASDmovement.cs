@@ -24,7 +24,7 @@ public class WASDmovement : MonoBehaviour
     public void OnSprint(InputValue value)
     {
         _isRunning = value.isPressed;
-        Debug.Log("POllo");
+   
     }
 
 }
