@@ -7,6 +7,7 @@ public class ItemData : ScriptableObject
     [SerializeField] private Sprite _icon;
     [SerializeField] private GameObject _mesh;
     [SerializeField] private EquipmentSlot _slot;
+    public EquipmentSlot Slot => _slot;
     
 }
 
@@ -17,4 +18,16 @@ public enum EquipmentSlot
     Boots,
     Hand,
     BackPack
+}
+
+[System.Serializable]
+public class ItemInstance
+{
+    [SerializeField] private ItemData _data;
+    public ItemData Data => _data;
+
+    [SerializeField] string _id;
+    public string Id => _id;
+
+
 }
