@@ -460,7 +460,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1693595390}
   m_Layer: 0
-  m_Name: Camera
+  m_Name: PositionHelper
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -903,6 +903,10 @@ PrefabInstance:
       propertyPath: m_camera
       value: 
       objectReference: {fileID: 2031450557}
+    - target: {fileID: 3204752256213425503, guid: a679b2c7d9941b549962222aea2de15b, type: 3}
+      propertyPath: _sprintMultiplier
+      value: 1.2
+      objectReference: {fileID: 0}
     - target: {fileID: 6683561095897244560, guid: a679b2c7d9941b549962222aea2de15b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -3.97
