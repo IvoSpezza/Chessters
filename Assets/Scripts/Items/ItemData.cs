@@ -17,7 +17,7 @@ public enum EquipmentSlot
     Armor,
     Boots,
     Hand,
-    BackPack
+    None
 }
 
 [System.Serializable]
@@ -26,8 +26,9 @@ public class ItemInstance
     [SerializeField] private ItemData _data;
     public ItemData Data => _data;
 
-    [SerializeField] string _id;
+    [SerializeField] private string _id;
     public string Id => _id;
 
+    [SerializeField] private 
 
 }
