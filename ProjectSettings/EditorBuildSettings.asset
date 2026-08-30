@@ -8,6 +8,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/Scenes/OnlineModeEnabler.unity
+    guid: 9f1207ba38e6b15459a2e44670da4062
+  - enabled: 1
+    path: Assets/Scenes/ivoScene.unity
+    guid: 098e9492d2ec1324b9ccd8ad02a5540c
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0
