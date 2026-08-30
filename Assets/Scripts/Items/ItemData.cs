@@ -29,6 +29,5 @@ public class ItemInstance
     [SerializeField] private string _id;
     public string Id => _id;
 
-    [SerializeField] private 
 
 }
