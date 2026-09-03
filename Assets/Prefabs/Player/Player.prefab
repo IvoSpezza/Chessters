@@ -415,6 +415,8 @@ GameObject:
   - component: {fileID: 6683561095897244560}
   - component: {fileID: 3204752256213425503}
   - component: {fileID: 5683862191542186557}
+  - component: {fileID: -7105164538996709219}
+  - component: {fileID: -7271499929996712896}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -451,7 +453,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 74e89c9167d8161479a1cbdb9a7aedcb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WASDmovement
-  _maxSpeed: 5
+  _walkSpeed: 5
+  _sprintMultiplier: 0
 --- !u!114 &5683862191542186557
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -482,6 +485,46 @@ MonoBehaviour:
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &-7105164538996709219
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22356a170c4dd1b47a52c3c16c9151e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LookToMause
+  m_camera: {fileID: 0}
+--- !u!114 &-7271499929996712896
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 721846257
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  m_InScenePlacedDisabledByDefault: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  m_InScenePlaced: 0
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
 --- !u!1 &9212894340179382442
 GameObject:
   m_ObjectHideFlags: 0

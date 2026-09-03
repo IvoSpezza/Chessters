@@ -709,7 +709,7 @@ GameObject:
   - component: {fileID: 1267702819}
   - component: {fileID: 1267702823}
   m_Layer: 5
-  m_Name: Canvas
+  m_Name: Menu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1279,7 +1279,7 @@ MonoBehaviour:
   NetworkConfig:
     ProtocolVersion: 0
     NetworkTransport: {fileID: 1985064279}
-    PlayerPrefab: {fileID: 0}
+    PlayerPrefab: {fileID: 8095176157960358633, guid: a679b2c7d9941b549962222aea2de15b, type: 3}
     Prefabs:
       NetworkPrefabsLists:
       - {fileID: 11400000, guid: bd791d02ebe4d0549b4023223d913781, type: 2}

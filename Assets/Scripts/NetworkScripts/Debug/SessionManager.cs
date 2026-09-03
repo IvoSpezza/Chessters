@@ -35,8 +35,6 @@ public class SessionManager : MonoBehaviour
         NetManager.OnClientDisconnectCallback += NetworkManager_ClientDesconnectedCallBack;
         NetManager.OnServerStarted += NetworkManager_ServerStarted;
         NetManager.OnServerStopped += NetworkManager_ServerStopped;
-
-        
     }
 
     
