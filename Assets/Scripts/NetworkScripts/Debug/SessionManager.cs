@@ -15,7 +15,7 @@ public class SessionManager : MonoBehaviour
     [SerializeField] private int playersAmount = 2;
     public static SessionManager instance {  get; private set;}
 
-    [SerializeField] private String START_SCENE = "ivoScene";
+    [SerializeField] private String START_SCENE;
     private NetworkManager NetManager => NetworkManager.Singleton;
 
     private void Awake()
@@ -35,9 +35,17 @@ public class SessionManager : MonoBehaviour
         NetManager.OnClientDisconnectCallback += NetworkManager_ClientDesconnectedCallBack;
         NetManager.OnServerStarted += NetworkManager_ServerStarted;
         NetManager.OnServerStopped += NetworkManager_ServerStopped;
+
+        NetManager.ConnectionApprovalCallback += NetworkManager_ConnectionApproval;
+
     }
 
-    
+    private void NetworkManager_ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    {
+        response.Approved = true;
+        response.CreatePlayerObject = false; // clave: NGO no spawnea nada solo
+    }
+
 
     private void NetworkManager_ClientConnectedCallBack(ulong clientId)
     {
@@ -50,11 +58,9 @@ public class SessionManager : MonoBehaviour
         }
 
         if (!NetManager.IsServer) return;
-
-        if(NetManager.ConnectedClients.Count == playersAmount)
-        {
-            NetManager.SceneManager.LoadScene(START_SCENE, LoadSceneMode.Single);
-        }
+                
+        NetManager.SceneManager.LoadScene(START_SCENE, LoadSceneMode.Single);
+        
     }
 
     private void NetworkManager_ClientDesconnectedCallBack(ulong clientId)

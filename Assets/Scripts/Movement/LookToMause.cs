@@ -1,13 +1,15 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
-public class LookToMause : MonoBehaviour
+public class LookToMause : NetworkBehaviour
 {
-    [SerializeField] private Camera m_camera;
+    private Camera m_camera;
 
     private Plane ground;
 
     private void Start()
     {
+        m_camera = Camera.main;
         ground = new Plane(Vector3.up, new Vector3(0f, transform.position.y, 0f));
     }
     void Update()
@@ -30,4 +32,6 @@ public class LookToMause : MonoBehaviour
 
         return transform.forward;
     }
+
+
 }
