@@ -407,6 +407,11 @@ GameObject:
   - component: {fileID: -6154191083311091925}
   - component: {fileID: -7105164538996709219}
   - component: {fileID: -3927294885008355274}
+  - component: {fileID: 2467927277384521440}
+  - component: {fileID: 1947952669253545589}
+  - component: {fileID: 6255081064242052920}
+  - component: {fileID: -2556420065892490313}
+  - component: {fileID: 938564086210004217}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -515,7 +520,7 @@ MonoBehaviour:
   TickSyncChildren: 0
   UseUnreliableDeltas: 0
   SyncPositionX: 1
-  SyncPositionY: 0
+  SyncPositionY: 1
   SyncPositionZ: 1
   SyncRotAngleX: 0
   SyncRotAngleY: 1
@@ -560,15 +565,84 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bossaball.Multiplayer.PlayerMovement
   ShowTopMostFoldoutHeaderGroup: 1
-  _acceleration: 3
-  _deceleration: 5
-  _maxSpeed: 5
+  _acceleration: 7.2
+  _deceleration: 7.8
+  _maxSpeed: 8
   _jumpForce: 10
-  _gravityForce: 20
+  _gravityForce: 30
   _groundLayer:
     serializedVersion: 2
     m_Bits: 1
   _groundCheckDistance: 1.1
+  _ignoreDistance: 0.25
+  _smoothDistance: 3
+  _smoothTime: 0.15
+  _debugLogs: 0
+--- !u!114 &2467927277384521440
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcdc00a283916424b878a398f00e7e12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Equipment
+--- !u!114 &1947952669253545589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56448b82fe2b5de4c85b8ea439f90d85, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inventory
+--- !u!114 &6255081064242052920
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34ee3acff8a5f2248a6a740c7b4e62bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Health
+  ShowTopMostFoldoutHeaderGroup: 1
+--- !u!114 &-2556420065892490313
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e97e3d4b5e6bb14bbf06aee4c57dd8c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Combat
+--- !u!114 &938564086210004217
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e489272e24bab7a499764474c7ea95d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
+  _maxHealth: 50
+  _moveSpeed: 10
+  _damage: 5
+  _atackSpeed: 2
 --- !u!1 &9212894340179382442
 GameObject:
   m_ObjectHideFlags: 0
