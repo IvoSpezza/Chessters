@@ -1,99 +1,149 @@
-using System;
 using System.Collections.Generic;
-using System.Net;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class SessionManager : MonoBehaviour
 {
-    [SerializeField] private string iPadress = "127.0.0.1";
+    public static SessionManager instance { get; private set; }
+
+    [Header("Red")]
+    [SerializeField] private string ipAddress = "127.0.0.1";
     [SerializeField] private ushort port = 7777;
+    [SerializeField] private int maxPlayers = 6;
 
-    [SerializeField] private int playersAmount = 2;
-    public static SessionManager instance {  get; private set;}
+    [Header("Escenas")]
+    [SerializeField] private string menuScene = "MainMenu";
+    [SerializeField] private string lobbyScene = "Lobby";
+    [SerializeField] private string gameScene = "Game";
 
-    [SerializeField] private String START_SCENE;
-    private NetworkManager NetManager => NetworkManager.Singleton;
+    [Header("Player")]
+    [SerializeField] private NetworkObject playerPrefab;
+
+    private enum SessionState { Menu, Lobby, InGame }
+    private SessionState _state = SessionState.Menu;
+
+    private NetworkManager Net => NetworkManager.Singleton;
 
     private void Awake()
     {
-        if(instance != null && instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
+        if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
         DontDestroyOnLoad(gameObject);
     }
 
     private void Start()
     {
-        NetManager.OnClientConnectedCallback += NetworkManager_ClientConnectedCallBack;
-        NetManager.OnClientDisconnectCallback += NetworkManager_ClientDesconnectedCallBack;
-        NetManager.OnServerStarted += NetworkManager_ServerStarted;
-        NetManager.OnServerStopped += NetworkManager_ServerStopped;
-
-        NetManager.ConnectionApprovalCallback += NetworkManager_ConnectionApproval;
-
+        Net.OnServerStarted += OnServerStarted;
+        Net.OnServerStopped += OnServerStopped;
+        Net.OnClientDisconnectCallback += OnClientDisconnected;
+        Net.ConnectionApprovalCallback += OnConnectionApproval;
     }
 
-    private void NetworkManager_ConnectionApproval(NetworkManager.ConnectionApprovalRequest request, NetworkManager.ConnectionApprovalResponse response)
+    private void OnDestroy()
     {
-        response.Approved = true;
-        response.CreatePlayerObject = false; // clave: NGO no spawnea nada solo
+        if (Net == null) return;
+        Net.OnServerStarted -= OnServerStarted;
+        Net.OnServerStopped -= OnServerStopped;
+        Net.OnClientDisconnectCallback -= OnClientDisconnected;
+        Net.ConnectionApprovalCallback -= OnConnectionApproval;
     }
 
-
-    private void NetworkManager_ClientConnectedCallBack(ulong clientId)
+    // ---------- API para la UI ----------
+    public void StartHost(string address = null)
     {
-        if (clientId == NetworkManager.ServerClientId)
+        SetConnectionData(address);
+        Net.StartHost();
+    }
+
+    public void StartClient(string address)
+    {
+        SetConnectionData(address);
+        Net.StartClient();
+    }
+
+    public void StartGame()
+    {
+        if (!Net.IsServer || _state != SessionState.Lobby) return;
+        _state = SessionState.InGame;
+        Net.SceneManager.LoadScene(gameScene, LoadSceneMode.Single);
+    }
+
+    private void SetConnectionData(string address)
+    {
+        var utp = Net.GetComponent<UnityTransport>();
+        utp.SetConnectionData(string.IsNullOrWhiteSpace(address) ? ipAddress : address, port);
+    }
+
+    // ---------- Server ----------
+    private void OnServerStarted()
+    {
+        _state = SessionState.Lobby;
+
+        Net.SceneManager.OnLoadEventCompleted += OnSceneLoadCompleted;       // host / cambios de escena
+        Net.SceneManager.OnSynchronizeComplete += OnClientSynchronized;      // clientes que entran tarde
+
+        Net.SceneManager.LoadScene(lobbyScene, LoadSceneMode.Single);
+    }
+
+    private void OnServerStopped(bool _)
+    {
+        _state = SessionState.Menu;
+        if (Net.SceneManager != null)
         {
-            Debug.Log("HostConected");
-        } else
-        {
-            Debug.Log($"Client {clientId} conected");
+            Net.SceneManager.OnLoadEventCompleted -= OnSceneLoadCompleted;
+            Net.SceneManager.OnSynchronizeComplete -= OnClientSynchronized;
         }
-
-        if (!NetManager.IsServer) return;
-                
-        NetManager.SceneManager.LoadScene(START_SCENE, LoadSceneMode.Single);
-        
+        SceneManager.LoadScene(menuScene);
     }
 
-    private void NetworkManager_ClientDesconnectedCallBack(ulong clientId)
+    private void OnConnectionApproval(NetworkManager.ConnectionApprovalRequest request,
+                                      NetworkManager.ConnectionApprovalResponse response)
     {
-        Debug.Log($"Client {clientId} Desconected");
-    }
-    private void NetworkManager_ServerStopped(bool obj)
-    {
-        Debug.Log("Server Stopped");
+        bool hasRoom = Net.ConnectedClientsIds.Count < maxPlayers;
+        bool open = _state == SessionState.Menu || _state == SessionState.Lobby; // Menu = el propio host
+
+        response.Approved = open && hasRoom;
+        response.CreatePlayerObject = false;            // el spawn es manual
+        if (!response.Approved)
+            response.Reason = !open ? "La partida ya empezó" : "Sala llena";
     }
 
-    private void NetworkManager_ServerStarted()
+    private void OnSceneLoadCompleted(string scene, LoadSceneMode mode,
+                                      List<ulong> completed, List<ulong> timedOut)
     {
-        Debug.Log("Server Started");
-        NetManager.SceneManager.OnLoadEventCompleted += SceneManager_OnServerSincronized;
+        foreach (ulong id in completed) SpawnPlayer(id);
     }
 
-    private void SceneManager_OnServerSincronized(string sceneName, LoadSceneMode loadSceneMode, List<ulong> clientsCompleted, List<ulong> clientsTimedOut)
+    private void OnClientSynchronized(ulong clientId) => SpawnPlayer(clientId);
+
+    private void SpawnPlayer(ulong clientId)
     {
-        Debug.Log($"SE SINCRONIZO, se sincrionizaron {clientsCompleted.Count}.{clientsTimedOut.Count} usuarions a la escena{sceneName}");
+        // Evita duplicados si ambos eventos disparan para el mismo cliente
+        if (Net.SpawnManager.GetPlayerNetworkObject(clientId) != null) return;
+
+        Vector3 pos = GetSpawnPosition(clientId);
+        NetworkObject player = Instantiate(playerPrefab, pos, Quaternion.identity);
+        player.SpawnAsPlayerObject(clientId, true); // true = se destruye con la escena
     }
 
-    public void StartHost()
+    private Vector3 GetSpawnPosition(ulong clientId)
     {
-        UnityTransport utp = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        utp.SetConnectionData(iPadress, port);
-        NetworkManager.Singleton.StartHost();
+        var points = FindObjectsByType<SpawnPoint>(FindObjectsSortMode.InstanceID);
+        if (points.Length == 0) return Vector3.zero;
+        return points[(int)(clientId % (ulong)points.Length)].transform.position;
     }
 
-    public void StartClient()
+    // ---------- Cliente ----------
+    private void OnClientDisconnected(ulong clientId)
     {
-        UnityTransport utp = NetworkManager.Singleton.GetComponent<UnityTransport>();
-        utp.SetConnectionData(iPadress, port);
-        NetworkManager.Singleton.StartClient();
+        // Solo me interesa cuando soy yo el que se desconectó (cliente, no host)
+        if (Net.IsServer) return;
+        Debug.Log($"Desconectado: {Net.DisconnectReason}");
+        SceneManager.LoadScene(menuScene);
     }
 }
+
+// Componente trivial: ponelo en objetos vacíos de cada escena (Lobby y Game)
+public class SpawnPoint : MonoBehaviour { }
