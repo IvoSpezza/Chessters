@@ -3,11 +3,14 @@ using UnityEngine;
 
 public class CameraManager : MonoBehaviour
 {
-    private CameraManager _instance;
+    private static CameraManager _instance;
 
-    public CameraManager Instance => _instance;
+    public static CameraManager Instance => _instance;
 
     [SerializeField] private CinemachineCamera _camera;
+
+    [SerializeField] private Camera _mainCam;
+    public Camera MainCam => _mainCam;
 
     private void Awake()
     {
@@ -15,9 +18,8 @@ public class CameraManager : MonoBehaviour
         {
             Destroy(gameObject);
             return;
-        }
-
-        _instance = this;
+        }        
+        _instance = this;        
     }
 
     public void SetTarget(Transform target)
