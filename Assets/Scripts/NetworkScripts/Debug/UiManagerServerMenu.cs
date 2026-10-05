@@ -1,23 +1,32 @@
-using System;
-using Unity.Netcode;
-using Unity.Netcode.Transports.UTP;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class UiManagerServerMenu : MonoBehaviour
 {
-    [SerializeField] private Button startClient;
-    [SerializeField] private Button startHost;
-
-    public event Action OnStartHost;
-    public event Action OnStartClient;
+    [SerializeField] private Button hostButton;
+    [SerializeField] private Button joinButton;
+    [SerializeField] private TMP_InputField ipInput;
 
     private void Start()
     {
-        startClient.onClick.AddListener(() => OnStartClient?.Invoke());
-        startHost.onClick.AddListener(() => OnStartHost?.Invoke());
+        hostButton.onClick.AddListener(OnHostClicked);
+        joinButton.onClick.AddListener(OnJoinClicked);
+    }
 
-        OnStartClient += SessionManager.instance.StartClient;
-        OnStartHost += SessionManager.instance.StartHost;
+    private void OnDestroy()
+    {
+        hostButton.onClick.RemoveListener(OnHostClicked);
+        joinButton.onClick.RemoveListener(OnJoinClicked);
+    }
+
+    private void OnHostClicked()
+    {
+        SessionManager.instance.StartHost();
+    }
+
+    private void OnJoinClicked()
+    {
+        SessionManager.instance.StartClient(ipInput.text);
     }
 }
