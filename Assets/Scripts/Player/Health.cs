@@ -20,12 +20,17 @@ public class Health : NetworkBehaviour, IDamageable
         _stats = GetComponent<PlayerStats>();
         _actualHealth.OnValueChanged += HandleHealthChanged;
         _stats.OnStatChanged += HandleStatChanged;
+
+        OnDied += OnDead; //TEST
+
         if(IsServer) _actualHealth.Value = MaxHealth;
         OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
     }
 
     public override void OnNetworkDespawn()
     {
+        OnDied -= OnDead;
+
         _actualHealth.OnValueChanged -= HandleHealthChanged;
         if (_stats != null) _stats.OnStatChanged -= HandleStatChanged;
     }
@@ -45,7 +50,7 @@ public class Health : NetworkBehaviour, IDamageable
     //Reacciones
     private void HandleHealthChanged(float previous, float current)
     {
-        Debug.Log($"[Health] {name} IsServer={IsServer} {previous} -> {current}");
+        Debug.Log($"[Health] {name} IsServer={IsOwner} {previous} -> {current}");
         OnHealthChanged?.Invoke(current, MaxHealth);
         if (previous > 0f && current <= 0f) OnDied?.Invoke();
     }
@@ -61,10 +66,21 @@ public class Health : NetworkBehaviour, IDamageable
         OnHealthChanged?.Invoke(CurrentHealth, MaxHealth); // la barra cambia de proporcion
     }
 
-    //TEMPTEST
+    //TEMPORAL TEST
     public void OnMainAttack()
-    {        
-        TakeDamage(5);
-    }  
+    {    
+        TestDamageRpc(5);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void TestDamageRpc(float damage)
+    {
+        TakeDamage(damage);
+    }
+
+    private void OnDead()
+    {
+        Debug.Log($"MEMORI{IsOwner}, vida restante: {_actualHealth.Value}");
+    }
 }
 

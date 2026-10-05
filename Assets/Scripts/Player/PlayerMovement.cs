@@ -111,8 +111,7 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
 
-        if (IsOwner && !IsServer)
-            _ant.StaleDataHandling = StaleDataHandling.Reanticipate;
+        if (IsOwner && !IsServer) _ant.StaleDataHandling = StaleDataHandling.Reanticipate;
     }
 
     // ------------------------------------------------------------------
