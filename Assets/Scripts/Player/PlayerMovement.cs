@@ -325,3 +325,24 @@ public class PlayerMovement : NetworkBehaviour
         _jumpRequested = true;
     }
 }
+
+/* Reporte que envia el cliente al servidor:
+ * Almacena los imputs del cliente con el tick exacto en el que ocurrieron.
+ * El cliente ejecuta instantaneamente sus imputs de manera local para no sentir lag.
+ * A la par, crea un reporte con los datos de la accion en ese momento
+ */
+public struct InputData : INetworkSerializable
+{
+    public int Tick;
+    public Vector2 MoveInput;
+    public Vector3 LookDirection;
+    public bool JumpPressed;
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Tick);
+        serializer.SerializeValue(ref MoveInput);
+        serializer.SerializeValue(ref LookDirection);
+        serializer.SerializeValue(ref JumpPressed);
+    }
+}
