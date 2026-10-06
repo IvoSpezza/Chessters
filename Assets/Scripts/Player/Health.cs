@@ -12,12 +12,13 @@ public class Health : NetworkBehaviour, IDamageable
     public bool IsDead => _actualHealth.Value <= 0f;
 
     // para la ui (vida actual, vida maxima) \\
-    public event Action<float, float> OnHealthChanged;
+    public event Action<float, float> OnHealthChanged; // desde algun lugar se llama
     public event Action OnDied;
 
     public override void OnNetworkSpawn()
     {
         _stats = GetComponent<PlayerStats>();
+
         _actualHealth.OnValueChanged += HandleHealthChanged;
         _stats.OnStatChanged += HandleStatChanged;
 

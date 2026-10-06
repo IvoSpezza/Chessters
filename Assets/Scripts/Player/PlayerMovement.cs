@@ -147,7 +147,10 @@ public class PlayerMovement : NetworkBehaviour
             Input = input,
             StateAfter = CaptureState()
         });
+
         while (_history.Count > MAX_HISTORY) _history.RemoveAt(0);
+
+        //------------------------------------\\
 
         SubmitInputServerRpc(input);
     }
@@ -264,8 +267,7 @@ public class PlayerMovement : NetworkBehaviour
 
         _actualSpeed = Mathf.MoveTowards(_actualSpeed, targetSpeed, changeFactor * dt);
 
-        if (isMoving)
-            _actualMovement = new Vector3(clampedInput.x, 0f, clampedInput.y).normalized;
+        if (isMoving) _actualMovement = new Vector3(clampedInput.x, 0f, clampedInput.y).normalized;
 
         Vector3 velocity = _actualMovement * _actualSpeed;
         velocity.y = _verticalVelocity;

@@ -29,6 +29,4 @@ public class LookToMause : NetworkBehaviour
         }        
         return transform.forward;
     }  
-
-
 }

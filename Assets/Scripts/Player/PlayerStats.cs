@@ -45,8 +45,14 @@ public class PlayerStats : MonoBehaviour
             else percent += m.Value;   // 0.1 = +10%
         }
 
-        if (_finalStats.ContainsKey(type)) _finalStats[type] = Mathf.Max(0f, (GetBase(type) + flat) * (1f + percent));
-        else _finalStats.Add(type, Mathf.Max(0f, (GetBase(type) + flat) * (1f + percent)));        
+        if (_finalStats.ContainsKey(type))
+        {
+            _finalStats[type] = Mathf.Max(0f, (GetBase(type) + flat) * (1f + percent));
+        }
+        else
+        {
+            _finalStats.Add(type, Mathf.Max(0f, (GetBase(type) + flat) * (1f + percent)));
+        }
     }
 
     public void AddModifier(StatModifier modifier, int sourceId)
@@ -103,9 +109,9 @@ public class PlayerStats : MonoBehaviour
 public enum StatType 
 {
     MaxHealth = 0, 
-    MoveSpeed = 1, 
+    MoveSpeed = 1,     
     Damage = 2, 
-    AttackSpeed = 3
+    AttackSpeed = 3   
 }
 public enum ModifierType {Flat,Percent}
 
