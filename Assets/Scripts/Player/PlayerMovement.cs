@@ -111,6 +111,8 @@ public class PlayerMovement : NetworkBehaviour
             return;
         }
 
+        if (IsOwner) CameraManager.Instance.SetTarget(transform);
+
         if (IsOwner && !IsServer) _ant.StaleDataHandling = StaleDataHandling.Reanticipate;
     }
 
