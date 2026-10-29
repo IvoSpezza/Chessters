@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.SceneManagement;
 
 public class SessionManager : MonoBehaviour
@@ -18,23 +19,29 @@ public class SessionManager : MonoBehaviour
     [SerializeField] private string lobbyScene = "Lobby";
     [SerializeField] private string gameScene = "Game";
 
-    [Header("Player")]
-    [SerializeField] private NetworkObject playerPrefab;
+    [Header("Cuerpo")]
+    [Tooltip("Prefab del CUERPO del jugador. El alma es el Default Player Prefab del NetworkManager.")]    
+    [SerializeField] private NetworkObject bodyPrefab;
 
     private enum SessionState { Menu, Lobby, InGame }
     private SessionState _state = SessionState.Menu;
+    private bool _sceneReady;   // true cuando la escena actual ya termino de cargar en el servidor
 
     private NetworkManager Net => NetworkManager.Singleton;
 
     private void Awake()
     {
+       
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
         DontDestroyOnLoad(gameObject);
     }
+   
 
     private void Start()
     {
+        var cfg = Net.NetworkConfig;
+        
         Net.OnServerStarted += OnServerStarted;
         Net.OnServerStopped += OnServerStopped;
         Net.OnClientDisconnectCallback += OnClientDisconnected;
@@ -53,6 +60,7 @@ public class SessionManager : MonoBehaviour
     // ---------- API para la UI ----------
     public void StartHost(string address = null)
     {
+        var cfg = Net.NetworkConfig;        
         SetConnectionData(address);
         Net.StartHost();
     }
@@ -67,6 +75,7 @@ public class SessionManager : MonoBehaviour
     {
         if (!Net.IsServer || _state != SessionState.Lobby) return;
         _state = SessionState.InGame;
+        _sceneReady = false;
         Net.SceneManager.LoadScene(gameScene, LoadSceneMode.Single);
     }
 
@@ -80,9 +89,11 @@ public class SessionManager : MonoBehaviour
     private void OnServerStarted()
     {
         _state = SessionState.Lobby;
+        _sceneReady = false;
 
         Net.SceneManager.OnLoadEventCompleted += OnSceneLoadCompleted;       // host / cambios de escena
         Net.SceneManager.OnSynchronizeComplete += OnClientSynchronized;      // clientes que entran tarde
+        PlayerSoul.OnServerSoulSpawned += OnSoulSpawned;                     // alma del host (puede llegar tarde)
 
         Net.SceneManager.LoadScene(lobbyScene, LoadSceneMode.Single);
     }
@@ -90,6 +101,8 @@ public class SessionManager : MonoBehaviour
     private void OnServerStopped(bool _)
     {
         _state = SessionState.Menu;
+        _sceneReady = false;
+        PlayerSoul.OnServerSoulSpawned -= OnSoulSpawned;
         if (Net.SceneManager != null)
         {
             Net.SceneManager.OnLoadEventCompleted -= OnSceneLoadCompleted;
@@ -105,7 +118,8 @@ public class SessionManager : MonoBehaviour
         bool open = _state == SessionState.Menu || _state == SessionState.Lobby; // Menu = el propio host
 
         response.Approved = open && hasRoom;
-        response.CreatePlayerObject = false;            // el spawn es manual
+        response.CreatePlayerObject = true;             // NGO crea el ALMA (Default Player Prefab)
+        Debug.Log($"[Approval] cliente={request.ClientNetworkId} estado={_state} prefabDelAlma={(Net.NetworkConfig.PlayerPrefab != null)}");
         if (!response.Approved)
             response.Reason = !open ? "La partida ya empezó" : "Sala llena";
     }
@@ -113,19 +127,46 @@ public class SessionManager : MonoBehaviour
     private void OnSceneLoadCompleted(string scene, LoadSceneMode mode,
                                       List<ulong> completed, List<ulong> timedOut)
     {
-        foreach (ulong id in completed) SpawnPlayer(id);
+        _sceneReady = true;
+        foreach (ulong id in completed) SpawnBody(id);
     }
 
-    private void OnClientSynchronized(ulong clientId) => SpawnPlayer(clientId);
-
-    private void SpawnPlayer(ulong clientId)
+    // El alma del host puede spawnear DESPUES de que la escena cargo. En ese caso el cuerpo
+    // se crea ahora. Los clientes que entran tarde pasan por OnClientSynchronized.
+    private void OnSoulSpawned(PlayerSoul soul)
     {
+        if (!_sceneReady) return;                                    // lo hara OnSceneLoadCompleted
+        if (soul.OwnerClientId != NetworkManager.ServerClientId) return;
+
+        StartCoroutine(SpawnBodyNextFrame(soul.OwnerClientId));
+    }
+
+    // Un frame de espera: no se spawnea un objeto adentro del OnNetworkSpawn de otro.
+    private System.Collections.IEnumerator SpawnBodyNextFrame(ulong clientId)
+    {
+        yield return null;
+        if (Net != null && Net.IsServer) SpawnBody(clientId);
+    }
+
+    private void OnClientSynchronized(ulong clientId) => SpawnBody(clientId);
+
+    // El alma ya existe (la crea NGO al conectar). Aca solo se crea el cuerpo y se vincula.
+    private void SpawnBody(ulong clientId)
+    {
+        PlayerSoul soul = PlayerSoul.GetFor(clientId);
+        if (soul == null)
+        {
+            Debug.Log($"[SessionManager] El cliente {clientId} todavia no tiene alma; el cuerpo se creara cuando exista.");
+            return;
+        }
+
         // Evita duplicados si ambos eventos disparan para el mismo cliente
-        if (Net.SpawnManager.GetPlayerNetworkObject(clientId) != null) return;
+        if (soul.HasBody) return;
 
         Vector3 pos = GetSpawnPosition(clientId);
-        NetworkObject player = Instantiate(playerPrefab, pos, Quaternion.identity);
-        player.SpawnAsPlayerObject(clientId, true); // true = se destruye con la escena
+        NetworkObject body = Instantiate(bodyPrefab, pos, Quaternion.identity);
+        body.SpawnWithOwnership(clientId, true);   // true = se destruye con la escena
+        soul.ServerSetBody(body);
     }
 
     private Vector3 GetSpawnPosition(ulong clientId)

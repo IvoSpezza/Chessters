@@ -1,21 +1,11 @@
-using UnityEngine;
-
-public enum ConsumableDataType
+public enum ConsumableType
 {
-  Potion,
-  Arrow
+    Potion,
+    Bomb,
+    Trap
 }
 
 public abstract class ConsumableDataBase : ItemDataBase
 {
-  private ConsumableDataType _consumableDataType;
-  
-  public ConsumableDataType consumableDataType => _consumableDataType;
-  
-  protected void SetConsumableType(ConsumableDataType consumableType)
-  {
-    _consumableDataType = consumableType;
-  }
-  
-  protected abstract void DefineConsumableType();
+    public abstract ConsumableType consumableType { get; }
 }
