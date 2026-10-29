@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45c7d221262b67a448e8657637a891cc, type: 3}
+  m_Name: SimpleHammer
+  m_EditorClassIdentifier: Assembly-CSharp::HammerData
+  _itemID: 102
+  _itemName: SimpleHammer
+  _itemDescription: Just a test hammer
+  _itemIcon: {fileID: 0}
+  _modifiers: []
+  _handsRequired: 1
+  _finalDamage: 1
+  _finalAttackSpeed: 0.4
+  _visualPrefab: {fileID: 8033779315191490384, guid: 9f88b5ac597e16442ad9871e05146c36, type: 3}
+  _impactRadius: 1.5
+  _impactDistance: 2

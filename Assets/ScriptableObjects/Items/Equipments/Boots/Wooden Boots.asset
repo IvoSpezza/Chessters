@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15ffe9babbd0f284f87900a75c786ebc, type: 3}
+  m_Name: Wooden Boots
+  m_EditorClassIdentifier: Assembly-CSharp::ArmorData
+  _itemID: 204
+  _itemName: Wooden Boots
+  _itemDescription: Botas de madera
+  _itemIcon: {fileID: 0}
+  _modifiers:
+  - Type: 1
+    Modifier: 1
+    Value: 2
+    Id: 0
+  - Type: 0
+    Modifier: 0
+    Value: 3
+    Id: 0
+  _slot: 3
+  _category: 1
+  _visualPrefab: {fileID: 0}

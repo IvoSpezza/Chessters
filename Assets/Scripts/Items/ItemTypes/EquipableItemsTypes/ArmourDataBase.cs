@@ -1,39 +1,28 @@
 using UnityEngine;
 
-public enum ArmourCategoryType
+public enum ArmorSlot
 {
-  Robe,
-  Light,
-  Heavy
+    Helmet,
+    Chest,
+    Legs,
+    Boots
 }
 
-public enum ArmourPieceType
+public enum ArmorCategoryType
 {
-  Gloves,
-  Boots,
-  BodyArmour,
-  Legs
+    Robe,
+    Light,
+    Heavy
 }
 
-public abstract class ArmourDataBase : EquipableItemData
+[CreateAssetMenu(fileName = "New Armor", menuName = "New Items/Armor")]
+public class ArmorData : EquipableItemData
 {
-    private ArmourCategoryType _armourCategoryType;
-    [SerializeField] private ArmourPieceType _armourPieceType;
-    [SerializeField] private float _defenseArmour;
-  
-    public ArmourCategoryType armourCategoryType => _armourCategoryType;
-    public ArmourPieceType armourPieceType => _armourPieceType;
-    public float defenseArmour => _defenseArmour;
-  
-    protected void SetArmourCategory(ArmourCategoryType armourCategory)
-    {
-        _armourCategoryType = armourCategory;
-    }
-    public override void Equip()
-    {
-        
-    }
-      
-    protected abstract void DefineArmourCategory();
-  
+    [SerializeField] private ArmorSlot _slot;
+    [SerializeField] private ArmorCategoryType _category;
+    [SerializeField] private GameObject _visualPrefab;
+
+    public ArmorSlot slot => _slot;
+    public ArmorCategoryType category => _category;
+    public GameObject visualPrefab => _visualPrefab;
 }

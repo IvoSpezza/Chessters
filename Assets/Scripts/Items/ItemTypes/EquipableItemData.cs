@@ -1,15 +1,13 @@
+using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Item que se puede equipar. Su efecto "global" es una lista de StatModifier
+/// (flat o porcentual) que PlayerInventory aplica sobre PlayerStats.
+/// </summary>
 public abstract class EquipableItemData : ItemDataBase
 {
-    [SerializeField] private ItemType _itemType;
+    [SerializeField] private List<StatModifier> _modifiers = new List<StatModifier>();
 
-    public abstract void Equip();
-}
-
-public enum ItemType
-{
-    Weapon,
-    Armor,
-    Accesory
+    public IReadOnlyList<StatModifier> modifiers => _modifiers;
 }

@@ -1,41 +1,65 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum WeaponCategoryType
 {
-  Sword,
-  Axe,
-  Bow,
-  Polearm
+    Sword,
+    Hammer,
+    Ranged
 }
 
+public enum HandsRequired
+{
+    One = 1,
+    Two = 2
+}
+
+/// <summary>
+/// Base de armas. Cada arma conserva sus propios datos (no pasan por PlayerStats) y sabe atacar (Use).
+/// Daño del golpe = stat Damage final del player * damageMultiplier.
+/// El SO es un asset COMPARTIDO: Use() no debe guardar estado en campos.
+/// </summary>
 public abstract class WeaponDataBase : EquipableItemData
 {
-  
-    private WeaponCategoryType _weaponCategoryType;
-    [SerializeField] private Mesh _weaponMesh;
-    [SerializeField] private float _damageWeapon;
-    [SerializeField] private float _attackSpeed;
-    [SerializeField] private float _distanceRange;
-  
-    
-    public WeaponCategoryType weaponCategoryType => _weaponCategoryType;
-    public float damageWeapon => _damageWeapon;
-    public float attackSpeed => _attackSpeed;
-    public float distanceRange => _distanceRange;
+    [SerializeField] private HandsRequired _handsRequired = HandsRequired.One;
 
-    public Mesh Mesh => _weaponMesh;
-  
-  
-    protected void SetWeaponCategory(WeaponCategoryType weaponCategory)
+    [Tooltip("Coeficiente del daño final del player. 0.3 = 30%, 1 = golpe completo")]    
+    [SerializeField, Range(0, 10)] private float _finalDamage = 1f;
+
+    [Tooltip("Coeficiente de velocidad de ataque del arma: 1 = normal, 2 = el doble de rápido, 0.5 = la mitad. Se multiplica por el stat AttackSpeed del player.")]
+    [SerializeField, Range(0, 10)] private float _finalAttackSpeed = 1f;
+
+    [SerializeField] private GameObject _visualPrefab;
+
+    public abstract WeaponCategoryType weaponCategory { get; }
+
+    public HandsRequired handsRequired => _handsRequired;
+    public float damageMultiplier => _finalDamage;
+    public float finalAttackSpeed => _finalAttackSpeed;
+    public GameObject visualPrefab => _visualPrefab;
+
+    public struct AttackContext
     {
-        _weaponCategoryType = weaponCategory;
+        public GameObject Owner;
+        public Vector3 AtackOrigin;
+        public Vector3 AtackDirection;
+        public float Damage;
     }
 
-    public override void Equip()
+    /// <summary>Solo servidor. Ejecuta el ataque del arma.</summary>
+    public abstract void Use(AttackContext context, Collider[] hitsBuffer, HashSet<IDamageable> alreadyHit, LayerMask layer);
+
+    /// <summary>
+    /// True si el collider pertenece a un blanco válido: tiene IDamageable y no es el atacante.
+    /// (Evitar golpear dos veces al mismo blanco lo controla cada arma con alreadyHit.)
+    /// </summary>
+    protected static bool TryGetTarget(Collider col, AttackContext context, out IDamageable target)
     {
-        
+        target = col.GetComponentInParent<IDamageable>();
+        if (target == null) return false;
+
+        if (context.Owner != null && col.transform.IsChildOf(context.Owner.transform)) return false;
+        return true;
     }
-  
-    protected abstract void DefineWeaponCategory();
-  
 }
