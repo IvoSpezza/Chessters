@@ -19,7 +19,9 @@ MonoBehaviour:
   _modifiers: []
   _handsRequired: 1
   _finalDamage: 0.57
-  _finalAttackSpeed: 1
+  _finalAttackSpeed: 2
+  _visualDuration: 0.15
+  _impactFraction: 0.5
   _visualPrefab: {fileID: 1881715255362967413, guid: b7a34fad9d11956448d35a4ce140f96b, type: 3}
-  _slashAngle: 90
-  _slashRange: 2
+  _slashAngle: 100
+  _slashRange: 4

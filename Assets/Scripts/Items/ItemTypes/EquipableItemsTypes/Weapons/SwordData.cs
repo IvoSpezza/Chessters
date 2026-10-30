@@ -46,10 +46,7 @@ public class SwordData : WeaponDataBase
                                angle, _slashRange, ctx.Duration * 1.5f);
 
         // El arma barre el arco de -half a +half
-        float t = 0f;
-
-        Quaternion initRot = ctx.Socket.rotation;
-        ctx.Socket.Rotate(new(90,0,0),Space.Self);
+        float t = 0f;      
 
         while (t < ctx.Duration)
         {

@@ -218,9 +218,9 @@ MonoBehaviour:
   Ownership: 1
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
-  m_InScenePlaced: 0
+  m_InScenePlaced: 1
   ActiveSceneSynchronization: 0
-  SceneMigrationSynchronization: 1
+  SceneMigrationSynchronization: 0
   SpawnWithObservers: 1
   DontDestroyWithOwner: 0
   AutoObjectParentSync: 1
@@ -242,7 +242,7 @@ MonoBehaviour:
   _settings:
     targetLevel: 10
     backpackLimit: 5
-    initialLootCount: 3
+    initialLootCount: 5
   _lootCatalog: {fileID: 11400000, guid: 833ca3c583436bd47be364e33048b6aa, type: 2}
   _roomCatalog: {fileID: 11400000, guid: 8897c11ef1f1190479b66541a4e38adc, type: 2}
   _roomAnchor: {fileID: 1847459045}

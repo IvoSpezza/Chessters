@@ -16,11 +16,11 @@ public static class ProjectilePool
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics() => _pools.Clear();
 
-    /// <summary>Registra el pool de cada arma a distancia del catalogo. Es idempotente.</summary>
+    /// <summary>Registra el pool de proyectiles de cada arma a distancia del catalogo.</summary>
     public static void RegisterAll(ItemCatalog catalog)
     {        
         if (catalog == null) return;
-        foreach (ItemDataBase item in catalog.Items)
+        foreach (ItemDataBase item in catalog.Weapons)
         {
             if (item is RangedData ranged && ranged.projectilePrefab != null)
                 Register(ranged.projectilePrefab, ranged.prewarmCount);

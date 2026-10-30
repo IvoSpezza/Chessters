@@ -196,7 +196,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6946568886173624784}
-  - component: {fileID: 7103490099490574603}
+  - component: {fileID: 7211474949996568417}
   m_Layer: 6
   m_Name: Body
   m_TagString: Untagged
@@ -221,7 +221,7 @@ Transform:
   - {fileID: 3698819998013628861}
   m_Father: {fileID: 6683561095897244560}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!136 &7103490099490574603
+--- !u!136 &7211474949996568417
 CapsuleCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -240,10 +240,10 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.62
-  m_Height: 2.41
+  m_Radius: 0.5
+  m_Height: 1.93
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0.08, z: 0}
 --- !u!1 &3422361528009417856
 GameObject:
   m_ObjectHideFlags: 0
@@ -667,9 +667,9 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.5
-  m_Height: 1
+  m_Height: 1.93
   m_Direction: 1
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: 0.08, z: 0}
 --- !u!114 &-3927294885008355274
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -690,9 +690,9 @@ MonoBehaviour:
   _collisionMask:
     serializedVersion: 2
     m_Bits: 384
-  _skinWidth: 0.03
+  _skinWidth: 0.02
   _maxSlopeAngle: 45
-  _groundCheckDistance: 1.1
+  _groundCheckDistance: 0.08
   _ignoreDistance: 0.25
   _smoothDistance: 3
   _smoothTime: 0.15
@@ -740,7 +740,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
   _catalog: {fileID: 11400000, guid: 833ca3c583436bd47be364e33048b6aa, type: 2}
-  _startingBackpackIds: 650000006600000067000000c9000000ca000000cb000000cc000000
+  _startingBackpackIds: 65000000
 --- !u!114 &275717849120187497
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -804,7 +804,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAttackVisuals
   ShowTopMostFoldoutHeaderGroup: 1
-  _effectMaterial: {fileID: 0}
+  _effectMaterial: {fileID: 2100000, guid: 690966e7e37dbe6479fafdce2a55043b, type: 2}
   _debugLogs: 0
 --- !u!1 &9212894340179382442
 GameObject:

@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.XR;
 
 /// <summary>
-/// Ataque por mano. Va en el CUERPO del jugador.
+/// Ataque por mano.
 ///
 /// Flujo:
 ///  - El dueño lee el click de cada mano (MainAttack = Hand1, SecondAtack = Hand2). Mantener apretado repite.
@@ -50,9 +51,9 @@ public class PlayerCombat : NetworkBehaviour
 
     private PlayerAttackVisuals _visuals;
 
-    // Un cooldown por mano (índice 0 = Hand1, 1 = Hand2). Un arma de dos manos usa el 0 para ambos clicks.
-    private readonly float[] _localNext = new float[2];
-    private readonly float[] _serverNext = new float[2];
+  
+    private readonly float[] _localNext = new float[2]; //CoolDown local para no spamear RCP 
+    private readonly float[] _serverNext = new float[2]; // CoolDown de la verdad
 
     // Buffers que se reutilizan en cada ataque (se los pasamos a weapon.Use para no generar basura)
     private readonly Collider[] _hitBuffer = new Collider[32];
@@ -66,13 +67,15 @@ public class PlayerCombat : NetworkBehaviour
         _stats = GetComponent<PlayerStats>();
         _health = GetComponent<Health>();
         _visuals = GetComponent<PlayerAttackVisuals>();        
-        // Todos los peers necesitan el pool registrado para poder recibir proyectiles
+
+        _playerInput = GetComponent<PlayerInput>();
+        _playerInput.enabled = IsOwner;
+
         ProjectilePool.RegisterAll(_inventory.Catalog);
 
         if (!IsOwner) return;
 
         _lookToMause = GetComponent<LookToMause>();
-        _playerInput = GetComponent<PlayerInput>();
         FindActions();
     }
 
@@ -90,30 +93,31 @@ public class PlayerCombat : NetworkBehaviour
     /// <summary>TODO: conectar con la fase de turno (no atacar fuera de combate, ni en planificación).</summary>
     public bool CanAttack() => GameManager.Instance == null || GameManager.Instance.CanAttack(OwnerClientId);
 
-    // ---------------------------------------------------------------- Cliente dueño
-
-    private void Update()
+    // ---------------------------------------------------------------- Detecto Imputs de Cliente dueño
+       
+    public void OnMainAttack(InputValue input)
     {
-        if (!IsOwner || !IsSpawned) return;
-
-        if (_mainAction == null || _secondAction == null) FindActions();
-
-        TryAttack(EquipSlot.Hand1, 0, _mainAction);
-        TryAttack(EquipSlot.Hand2, 1, _secondAction);
-    }
-
-    private void TryAttack(EquipSlot hand, int handIndex, InputAction action)
-    {
-        if (action == null || !action.IsPressed()) return;
         if (!CanAttack() || _health.IsDead) return;
-        if (!TryResolveWeapon(hand, out WeaponDataBase weapon, out int cooldownIndex)) return;
+        if (!TryResolveWeapon(EquipSlot.Hand1, out WeaponDataBase weapon, out int cooldownIndex)) return;
         if (Time.time < _localNext[cooldownIndex]) return;
 
         _localNext[cooldownIndex] = Time.time + GetAttackInterval(weapon);
 
         Vector3 aim = _lookToMause.GetOrientation();
-        PlayVisual(cooldownIndex, weapon, aim);   // predicción: el dueño ve el swing al instante
-        AttackRpc(handIndex, aim);
+        PlayVisual(cooldownIndex, weapon, aim);   
+        AttackRpc(0, aim);
+    }
+    public void OnSecondAtack(InputValue input)
+    {
+        if (!CanAttack() || _health.IsDead) return;
+        if (!TryResolveWeapon(EquipSlot.Hand2, out WeaponDataBase weapon, out int cooldownIndex)) return;
+        if (Time.time < _localNext[cooldownIndex]) return;
+
+        _localNext[cooldownIndex] = Time.time + GetAttackInterval(weapon);
+
+        Vector3 aim = _lookToMause.GetOrientation();
+        PlayVisual(cooldownIndex, weapon, aim);  
+        AttackRpc(1, aim);
     }
 
     // ---------------------------------------------------------------- Servidor
@@ -135,12 +139,10 @@ public class PlayerCombat : NetworkBehaviour
         float now = Time.time;
         if (now < _serverNext[cooldownIndex] - _cooldownTolerance) return;   // demasiado pronto
         _serverNext[cooldownIndex] = now + GetAttackInterval(weapon);
-
-        // No confiamos en lo que manda el cliente: dirección horizontal y normalizada
+                
         aimDirection.y = 0f;
         Vector3 dir = aimDirection.sqrMagnitude > 0.0001f ? aimDirection.normalized : transform.forward;
-
-        // El contexto se captura al click: el golpe cae donde apuntó el jugador
+               
         var context = new WeaponDataBase.AttackContext
         {
             Owner = gameObject,

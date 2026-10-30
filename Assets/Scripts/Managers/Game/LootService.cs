@@ -24,7 +24,7 @@ public static class LootService
 
     private static void GiveRandom(PlayerInventory inventory, int count, ItemCatalog catalog, List<int> pool)
     {
-        if (catalog == null || catalog.Items.Count == 0)
+        if (catalog == null || catalog.ItemsAmount() == 0)
         {
             Debug.LogWarning("[LootService] Catalogo vacio o sin asignar.");
             return;
@@ -32,7 +32,7 @@ public static class LootService
 
         for (int i = 0; i < count; i++)
         {
-            if (pool.Count == 0) Refill(pool, catalog);
+            if (pool.Count == 0) RefillPool(pool, catalog);
             if (pool.Count == 0) return;
 
             int index = Random.Range(0, pool.Count);
@@ -41,9 +41,16 @@ public static class LootService
         }
     }
 
-    private static void Refill(List<int> pool, ItemCatalog catalog)
+
+    private static void RefillPool(List<int> pool, ItemCatalog catalog)
     {
-        foreach (ItemDataBase item in catalog.Items)
+        foreach (ItemDataBase item in catalog.Weapons)
+            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
+        foreach (ItemDataBase item in catalog.Armor)
+            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
+        foreach (ItemDataBase item in catalog.Accesoris)
+            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
+        foreach (ItemDataBase item in catalog.Consumables)
             if (item != null && item.itemID >= 0) pool.Add(item.itemID);
     }
 }
