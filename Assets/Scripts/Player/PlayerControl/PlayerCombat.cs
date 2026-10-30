@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -26,15 +27,18 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private string _secondAttackAction = "SecondAtack";
 
     [Header("Golpes")]
-    [Tooltip("Capas que reciben daño. No incluir la capa de los jugadores.")]
+    [Tooltip("Capas que reciben daño.")]
     [SerializeField] private LayerMask _enemyMask;
     [Tooltip("Altura sobre el pivote del cuerpo desde donde salen los golpes y proyectiles.")]
     [SerializeField] private float _attackOriginHeight = 0.5f;
     [Tooltip("Margen en segundos para absorber el jitter de red al validar el cooldown en el servidor.")]
     [SerializeField, Min(0)] private float _cooldownTolerance = 0.1f;
 
+
     [Header("Debug")]
     [SerializeField] private bool _debugLogs;
+
+
 
     private PlayerInventory _inventory;
     private PlayerStats _stats;
@@ -44,6 +48,8 @@ public class PlayerCombat : NetworkBehaviour
     private InputAction _mainAction;
     private InputAction _secondAction;
 
+    private PlayerAttackVisuals _visuals;
+
     // Un cooldown por mano (índice 0 = Hand1, 1 = Hand2). Un arma de dos manos usa el 0 para ambos clicks.
     private readonly float[] _localNext = new float[2];
     private readonly float[] _serverNext = new float[2];
@@ -52,14 +58,14 @@ public class PlayerCombat : NetworkBehaviour
     private readonly Collider[] _hitBuffer = new Collider[32];
     private readonly HashSet<IDamageable> _alreadyHit = new HashSet<IDamageable>();
 
-    // ---------------------------------------------------------------- Ciclo de vida
+    // ---------------------------------------------------------------- 
 
     public override void OnNetworkSpawn()
     {
         _inventory = GetComponent<PlayerInventory>();
         _stats = GetComponent<PlayerStats>();
         _health = GetComponent<Health>();
-
+        _visuals = GetComponent<PlayerAttackVisuals>();        
         // Todos los peers necesitan el pool registrado para poder recibir proyectiles
         ProjectilePool.RegisterAll(_inventory.Catalog);
 
@@ -82,7 +88,7 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     /// <summary>TODO: conectar con la fase de turno (no atacar fuera de combate, ni en planificación).</summary>
-    public bool CanAttack() => true;
+    public bool CanAttack() => GameManager.Instance == null || GameManager.Instance.CanAttack(OwnerClientId);
 
     // ---------------------------------------------------------------- Cliente dueño
 
@@ -104,7 +110,10 @@ public class PlayerCombat : NetworkBehaviour
         if (Time.time < _localNext[cooldownIndex]) return;
 
         _localNext[cooldownIndex] = Time.time + GetAttackInterval(weapon);
-        AttackRpc(handIndex, _lookToMause.GetOrientation());
+
+        Vector3 aim = _lookToMause.GetOrientation();
+        PlayVisual(cooldownIndex, weapon, aim);   // predicción: el dueño ve el swing al instante
+        AttackRpc(handIndex, aim);
     }
 
     // ---------------------------------------------------------------- Servidor
@@ -131,6 +140,7 @@ public class PlayerCombat : NetworkBehaviour
         aimDirection.y = 0f;
         Vector3 dir = aimDirection.sqrMagnitude > 0.0001f ? aimDirection.normalized : transform.forward;
 
+        // El contexto se captura al click: el golpe cae donde apuntó el jugador
         var context = new WeaponDataBase.AttackContext
         {
             Owner = gameObject,
@@ -139,11 +149,58 @@ public class PlayerCombat : NetworkBehaviour
             Damage = _stats.GetStat(StatType.Damage) * weapon.damageMultiplier
         };
 
+        EquipSlot slot = cooldownIndex == 0 ? EquipSlot.Hand1 : EquipSlot.Hand2;
+        float delay = GetVisualDuration(weapon) * weapon.impactFraction;
+
         if (_debugLogs)
-            Debug.Log($"[Combat] {name} {hand} {weapon.name} daño={context.Damage:F2} intervalo={GetAttackInterval(weapon):F2}s");
+            Debug.Log($"[Combat] {name} {hand} {weapon.name} daño={context.Damage:F2} intervalo={GetAttackInterval(weapon):F2}s delayImpacto={delay:F3}s");
+
+        AttackVisualRpc(cooldownIndex, dir);   // los demás peers ven el swing (el dueño ya lo predijo)
+
+        if (delay <= 0f) ServerApplyImpact(slot, weapon, context);
+        else StartCoroutine(ServerImpactAfter(delay, slot, weapon, context));
+    }
+    private IEnumerator ServerImpactAfter(float delay, EquipSlot slot, WeaponDataBase weapon, WeaponDataBase.AttackContext context)
+    {
+        yield return new WaitForSeconds(delay);
+        ServerApplyImpact(slot, weapon, context);
+    }
+
+    /// <summary>
+    /// Momento del impacto (solo servidor). Punto único donde más adelante se podría sumar
+    /// tolerancia de hitbox o rewind sin reescribir nada.
+    /// </summary>
+    private void ServerApplyImpact(EquipSlot slot, WeaponDataBase weapon, WeaponDataBase.AttackContext context)
+    {
+        if (!IsSpawned || _health.IsDead) return;                   // murió durante el swing
+        if (_inventory.GetEquippedItem(slot) != weapon) return;     // desequipó o cambió el arma: se cancela
 
         weapon.Use(context, _hitBuffer, _alreadyHit, _enemyMask);
     }
+
+    /// <summary>El servidor avisa a los demás peers que hubo un ataque. handIndex = mano ya resuelta (0 = Hand1, 1 = Hand2).</summary>
+    [Rpc(SendTo.NotOwner)]
+    private void AttackVisualRpc(int handIndex, Vector3 aimDirection, RpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId != NetworkManager.ServerClientId) return;   // solo el servidor lo manda
+        if (handIndex < 0 || handIndex > 1) return;
+
+        EquipSlot slot = handIndex == 0 ? EquipSlot.Hand1 : EquipSlot.Hand2;
+        if (_inventory.GetEquippedItem(slot) is WeaponDataBase weapon)
+            PlayVisual(handIndex, weapon, aimDirection);
+    }
+
+    private void PlayVisual(int handIndex, WeaponDataBase weapon, Vector3 aimDirection)
+    {
+        if (_visuals == null) return;
+
+        Vector3 origin = transform.position + Vector3.up * _attackOriginHeight;
+        _visuals.PlayAttack(handIndex, weapon, origin, aimDirection, GetVisualDuration(weapon));
+    }
+
+    /// <summary>Duración del visual: la base del arma, acortada para que un buff de velocidad no pise el golpe siguiente.</summary>
+    private float GetVisualDuration(WeaponDataBase weapon) =>
+        Mathf.Min(weapon.visualDuration, GetAttackInterval(weapon) * 0.8f);
 
     // ---------------------------------------------------------------- Helpers
 

@@ -13,6 +13,12 @@ using UnityEngine.InputSystem;
 ///  - El cliente dueño muestra su prediccion con AnticipatedNetworkTransform
 ///    (AnticipateMove / AnticipateRotate).
 ///
+/// Colisiones:
+///  - El Rigidbody es KINEMATIC: solo sirve para que los triggers detecten al jugador.
+///  - Las paredes y el suelo se resuelven a mano en SimulateStep con CapsuleCast
+///    (collide and slide). Como solo consulta la fisica estatica, el resultado es igual
+///    en cliente y servidor, y se puede re-simular en OnReanticipate.
+///
 /// Flujo:
 ///  - El dueño simula su input al instante y lo muestra con AnticipateMove/AnticipateRotate.
 ///  - Ese mismo input se envia al servidor por RPC y el servidor aplica la MISMA logica.
@@ -23,11 +29,12 @@ using UnityEngine.InputSystem;
 ///
 /// La velocidad maxima sale de PlayerStats (StatType.MoveSpeed).
 /// </summary>
-[RequireComponent(typeof(PlayerStats))]
+[RequireComponent(typeof(PlayerStats), typeof(Rigidbody), typeof(CapsuleCollider))]
 public class PlayerMovement : NetworkBehaviour
 {
     private const float STOPVALUE = 0.01f;
     private const int MAX_HISTORY = 256;
+    private const int MAX_SLIDE_ITERATIONS = 3;
 
     [Header("Horizontal Movement")]
     [Tooltip("Segundos para llegar de 0 a la velocidad maxima (MoveSpeed de PlayerStats).")]
@@ -38,8 +45,16 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Vertical Movement")]
     [SerializeField, Min(0)] private float _jumpForce = 10f;
     [SerializeField, Min(0)] private float _gravityForce = 20f;
-    [SerializeField] private LayerMask _groundLayer;
-    [SerializeField] private float _groundCheckDistance = 1.1f;
+
+    [Header("Colisiones")]
+    [Tooltip("Capas que bloquean el movimiento (suelo y paredes)")]
+    [SerializeField] private LayerMask _collisionMask;
+    [Tooltip("Separacion minima que se deja con las superficies para no quedar pegado.")]
+    [SerializeField, Min(0.001f)] private float _skinWidth = 0.02f;
+    [Tooltip("Pendiente maxima (grados) que cuenta como suelo caminable.")]
+    [SerializeField, Range(0f, 89f)] private float _maxSlopeAngle = 45f;
+    [Tooltip("Distancia hacia abajo (desde los pies de la capsula) para considerar que esta en el suelo.")]
+    [SerializeField, Min(0.01f)] private float _groundCheckDistance = 0.1f;
 
     [Header("Reconciliacion (cliente dueño)")]
     [Tooltip("Error menor a esto: se ignora la correccion y se conserva lo que el cliente ya mostraba.")]
@@ -52,10 +67,18 @@ public class PlayerMovement : NetworkBehaviour
     [Header("Debug")]
     [SerializeField] private bool _debugLogs;
 
+    private Rigidbody _rb;
+    private CapsuleCollider _capsule;
     private AnticipatedNetworkTransform _ant;
     private LookToMause _lookToMause;
     private PlayerInput _playerInput;
     private PlayerStats _stats;
+
+    // Medidas de la capsula en espacio mundo, relativas a _pos (se calculan al spawnear)
+    private float _capsuleRadius;
+    private float _capsuleHalfSegment;   // distancia del centro a cada extremo de la linea de la capsula
+    private float _capsuleCenterY;       // altura del centro de la capsula sobre el pivote
+    private float _cosMaxSlope;
 
     // Input local (solo el dueño)
     private Vector2 _currentMoveInput;
@@ -87,8 +110,8 @@ public class PlayerMovement : NetworkBehaviour
 
     // ------------------------------------------------------------------
     // OnNetworkSpawn
-    // Habilita input y mouse solo para el dueño, toma la posicion
-    // de spawn como estado inicial y, en el
+    // Habilita input y mouse solo para el dueño, configura el Rigidbody kinematic,
+    // mide la capsula, toma la posicion de spawn como estado inicial y, en el
     // cliente dueño (no host), activa la reanticipacion constante.
     // ------------------------------------------------------------------
     public override void OnNetworkSpawn()
@@ -97,6 +120,15 @@ public class PlayerMovement : NetworkBehaviour
         _lookToMause = GetComponent<LookToMause>();
         _ant = GetComponent<AnticipatedNetworkTransform>();
         _stats = GetComponent<PlayerStats>();
+        _rb = GetComponent<Rigidbody>();
+        _capsule = GetComponent<CapsuleCollider>();
+
+        // Kinematic: no lo mueve la fisica, solo detecta triggers. El que mueve es el AnticipatedNetworkTransform.
+        _rb.isKinematic = true;
+        _rb.useGravity = false;
+        _rb.interpolation = RigidbodyInterpolation.None;
+
+        CacheCapsule();
 
         _playerInput.enabled = IsOwner;
         _lookToMause.enabled = IsOwner;
@@ -113,6 +145,20 @@ public class PlayerMovement : NetworkBehaviour
         if (IsOwner) CameraManager.Instance.SetTarget(transform);
 
         if (IsOwner && !IsServer) _ant.StaleDataHandling = StaleDataHandling.Reanticipate;
+    }
+
+    // Mide la capsula una sola vez (asume capsula vertical, direction = Y)
+    private void CacheCapsule()
+    {
+        Vector3 scale = transform.lossyScale;
+        _capsuleRadius = _capsule.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float height = Mathf.Max(_capsule.height * Mathf.Abs(scale.y), _capsuleRadius * 2f);
+        _capsuleHalfSegment = height * 0.5f - _capsuleRadius;
+        _capsuleCenterY = _capsule.center.y * scale.y;
+        _cosMaxSlope = Mathf.Cos(_maxSlopeAngle * Mathf.Deg2Rad);
+
+        if (_collisionMask.value == 0)
+            Debug.LogWarning($"[{name}] _collisionMask vacia: el jugador no va a colisionar con nada (ni con el suelo).", this);
     }
 
     // ------------------------------------------------------------------
@@ -159,13 +205,16 @@ public class PlayerMovement : NetworkBehaviour
     // ------------------------------------------------------------------
     // SubmitInputServerRpc
     // Se ejecuta en el servidor cuando llega un input de un cliente.
-    // Aplica exactamente la misma simulacion que el cliente. Como se llama
-    // con AnticipateMove en el servidor, el componente actualiza solo el
-    // estado autoritativo y lo replica a todos.
+    // Valida que el emisor sea el dueño del cuerpo y aplica exactamente la
+    // misma simulacion que el cliente. Como se llama con AnticipateMove en
+    // el servidor, el componente actualiza solo el estado autoritativo y
+    // lo replica a todos.
     // ------------------------------------------------------------------
     [Rpc(SendTo.Server)]
-    private void SubmitInputServerRpc(InputData input)
+    private void SubmitInputServerRpc(InputData input, RpcParams rpcParams = default)
     {
+        if (rpcParams.Receive.SenderClientId != OwnerClientId) return;   // solo el dueño
+
         SimulateStep(input);
         ApplyToAnticipatedTransform();
     }
@@ -239,11 +288,11 @@ public class PlayerMovement : NetworkBehaviour
     // Un paso de simulacion (un FixedUpdate). Identico en cliente y servidor.
     // Solo toca _pos, _lookDir y las velocidades; nunca el transform.
     //  - Rotacion: guarda la direccion del mouse.
-    //  - Suelo: raycast hacia abajo desde _pos.
+    //  - Suelo: CapsuleCast corto hacia abajo desde _pos.
     //  - Salto y gravedad: modifican _verticalVelocity.
     //  - Horizontal: la velocidad (un solo vector) se mueve hacia input * MoveSpeed.
     //    Al invertir la direccion pasa por cero de forma natural.
-    //  - Desplazamiento: SUMA velocidad * dt a _pos.
+    //  - Desplazamiento: MoveAndCollide (frena y desliza contra paredes/suelo/techo).
     // ------------------------------------------------------------------
     private void SimulateStep(InputData input)
     {
@@ -252,7 +301,7 @@ public class PlayerMovement : NetworkBehaviour
         if (input.LookDirection != Vector3.zero)
             _lookDir = input.LookDirection;
 
-        bool isGrounded = Physics.Raycast(_pos, Vector3.down, _groundCheckDistance, _groundLayer);
+        bool isGrounded = CheckGrounded(_pos);
 
         if (input.JumpPressed && isGrounded)
             _verticalVelocity = _jumpForce;
@@ -283,7 +332,70 @@ public class PlayerMovement : NetworkBehaviour
         Vector3 velocity = _horizontalVelocity;
         velocity.y = _verticalVelocity;
 
-        _pos += velocity * dt;
+        // --- Desplazamiento con colision ---
+        float yBefore = _pos.y;
+        _pos = MoveAndCollide(_pos, velocity * dt);
+
+        // Techo: si subiamos y casi no avanzamos en Y, cortamos el salto
+        if (_verticalVelocity > 0f && (_pos.y - yBefore) < _verticalVelocity * dt * 0.5f)
+            _verticalVelocity = 0f;
+    }
+
+    // ------------------------------------------------------------------
+    // Colisiones (collide and slide)
+    // Todo parte de una posicion (_pos) y no toca el transform, asi que se puede
+    // llamar varias veces seguidas desde OnReanticipate.
+    // ------------------------------------------------------------------
+
+    // Mueve la capsula 'delta' desde 'start'. Si choca, frena dejando _skinWidth de margen
+    // y desliza lo que sobra por la superficie (hasta MAX_SLIDE_ITERATIONS veces).
+    private Vector3 MoveAndCollide(Vector3 start, Vector3 delta)
+    {
+        Vector3 pos = start;
+        Vector3 remaining = delta;
+
+        for (int i = 0; i < MAX_SLIDE_ITERATIONS; i++)
+        {
+            float distance = remaining.magnitude;
+            if (distance < 0.0001f) break;
+
+            Vector3 dir = remaining / distance;
+
+            if (!CastCapsule(pos, dir, distance + _skinWidth, out RaycastHit hit))
+            {
+                pos += remaining;
+                break;
+            }
+
+            // Avanzamos hasta el choque (menos el margen)
+            float moveDistance = Mathf.Max(0f, hit.distance - _skinWidth);
+            pos += dir * moveDistance;
+
+            // Lo que sobra se proyecta sobre la superficie: desliza por la pared
+            Vector3 leftover = dir * (distance - moveDistance);
+            remaining = Vector3.ProjectOnPlane(leftover, hit.normal);
+        }
+
+        return pos;
+    }
+
+    // True si hay suelo caminable justo debajo de la capsula
+    private bool CheckGrounded(Vector3 position)
+    {
+        if (!CastCapsule(position, Vector3.down, _groundCheckDistance + _skinWidth, out RaycastHit hit))
+            return false;
+
+        return hit.normal.y >= _cosMaxSlope;
+    }
+
+    private bool CastCapsule(Vector3 position, Vector3 direction, float distance, out RaycastHit hit)
+    {
+        Vector3 center = position + Vector3.up * _capsuleCenterY;
+        Vector3 top = center + Vector3.up * _capsuleHalfSegment;
+        Vector3 bottom = center - Vector3.up * _capsuleHalfSegment;
+
+        return Physics.CapsuleCast(top, bottom, _capsuleRadius, direction, out hit, distance,
+                                   _collisionMask, QueryTriggerInteraction.Ignore);
     }
 
     // ------------------------------------------------------------------
@@ -333,6 +445,29 @@ public class PlayerMovement : NetworkBehaviour
     {
         if (!IsOwner) return;
         _jumpRequested = true;
+    }
+    
+    public void ServerTeleport(Vector3 position)
+    {
+        if (!IsServer) return;
+        ResetSimulation(position);
+        TeleportOwnerRpc(position);
+    }
+
+    [Rpc(SendTo.Owner)]
+    private void TeleportOwnerRpc(Vector3 position)
+    {
+        if (IsServer) return;   
+        ResetSimulation(position);
+    }
+
+    private void ResetSimulation(Vector3 position)
+    {
+        _pos = position;
+        _horizontalVelocity = Vector3.zero;
+        _verticalVelocity = 0f;
+        _history.Clear();
+        ApplyToAnticipatedTransform();
     }
 }
 

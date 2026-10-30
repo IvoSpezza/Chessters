@@ -18,8 +18,7 @@ public static class ProjectilePool
 
     /// <summary>Registra el pool de cada arma a distancia del catalogo. Es idempotente.</summary>
     public static void RegisterAll(ItemCatalog catalog)
-    {
-        Debug.Log($"[Pool] RegisterAll catálogo={(catalog != null ? catalog.Items.Count.ToString() : "NULL")}");
+    {        
         if (catalog == null) return;
         foreach (ItemDataBase item in catalog.Items)
         {
@@ -48,7 +47,7 @@ public static class ProjectilePool
 
         
         nm.PrefabHandler.AddHandler(prefab, pool);
-        Debug.Log($"[Pool] {(nm.IsServer ? "SERVIDOR" : "CLIENTE")} registró el handler de {prefab.name}");
+        
     }
 
     /// <summary>Solo servidor: saca un proyectil del pool (todavia sin spawnear en red).</summary>

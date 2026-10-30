@@ -185,7 +185,7 @@ public class PlayerInventory : NetworkBehaviour
     // ---------------------------------------------------------------- Solo servidor (loot, donacion, trade, muerte)
 
     /// <summary>TODO: conectar con la fase de turno del DungeonManager (no equipar en planificacion/combate).</summary>
-    public bool CanModifyEquipment() => true;
+    public bool CanModifyEquipment() => GameManager.Instance == null || GameManager.Instance.CanModifyEquipment;
 
     public bool AddItem(ItemDataBase item) => item != null && AddItem(item.itemID);
 

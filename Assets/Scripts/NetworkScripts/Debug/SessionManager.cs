@@ -185,6 +185,3 @@ public class SessionManager : MonoBehaviour
         SceneManager.LoadScene(menuScene);
     }
 }
-
-// Componente trivial: ponelo en objetos vacíos de cada escena (Lobby y Game)
-public class SpawnPoint : MonoBehaviour { }

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -32,6 +33,31 @@ public class SwordData : WeaponDataBase
 
             alreadyHit.Add(target);
             target.TakeDamage(context.Damage);
+        }
+    }
+
+    public override IEnumerator PlayAttackVisual(VisualContext ctx)
+    {
+        float angle = Mathf.Clamp(_slashAngle, 0f, 360f);
+        float half = angle * 0.5f;
+
+        // Abanico con el mismo ángulo y alcance que el hitbox
+        AttackEffects.SpawnFan(ctx.Runner, ctx.EffectMaterial, ctx.AtackOrigin, ctx.AtackDirection,
+                               angle, _slashRange, ctx.Duration * 1.5f);
+
+        // El arma barre el arco de -half a +half
+        float t = 0f;
+
+        Quaternion initRot = ctx.Socket.rotation;
+        ctx.Socket.Rotate(new(90,0,0),Space.Self);
+
+        while (t < ctx.Duration)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.Clamp01(t / ctx.Duration);
+            Vector3 dir = Quaternion.AngleAxis(Mathf.Lerp(-half, half, k), Vector3.forward) * ctx.AtackDirection;
+            ctx.Socket.rotation = Quaternion.LookRotation(dir, Vector3.up);
+            yield return null;
         }
     }
 }

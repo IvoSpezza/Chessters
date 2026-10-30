@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
@@ -15,6 +16,8 @@ public class RangedData : WeaponDataBase
     [Tooltip("Capas que frenan el proyectil (suelo, paredes), además de los enemigos.")]
     [SerializeField] private LayerMask _obstacleMask;
 
+    private const float RecoilDistance = 0.12f;       
+    public override float impactFraction => 0f;
     public override WeaponCategoryType weaponCategory => WeaponCategoryType.Ranged;
 
     public GameObject projectilePrefab => _projectilePrefab;
@@ -36,5 +39,31 @@ public class RangedData : WeaponDataBase
             projectile.ServerLaunch(context.AtackDirection, _projectileSpeed, context.Damage, _projectileLifetime, layer | _obstacleMask);
         else
             Debug.LogError($"[RangedData] El prefab {_projectilePrefab.name} no tiene el script Projectile.", _projectilePrefab);
+    }
+
+    public override IEnumerator PlayAttackVisual(VisualContext ctx)
+    {
+        Transform socket = ctx.Socket;
+        Transform parent = socket.parent;
+        Vector3 restLocal = socket.localPosition;
+        Quaternion aim = Quaternion.LookRotation(ctx.AtackDirection, Vector3.up);
+
+        // Destello en la punta del arco (el proyectil real nace en el centro del cuerpo, que queda tapado por la cápsula)
+        AttackEffects.SpawnFlash(ctx.Runner, ctx.EffectMaterial, socket.position + ctx.AtackDirection * 0.5f,
+                                 ctx.AtackDirection, 0.25f, 0.12f);
+
+        float t = 0f;
+        while (t < ctx.Duration)
+        {
+            t += Time.deltaTime;
+            float k = Mathf.Clamp01(t / ctx.Duration);
+
+            // Retroceso: sube rápido hasta el 20% y vuelve
+            float recoil = k < 0.2f ? k / 0.2f : 1f - (k - 0.2f) / 0.8f;
+
+            socket.rotation = aim;
+            socket.position = parent.TransformPoint(restLocal) - ctx.AtackDirection * (recoil * RecoilDistance);
+            yield return null;
+        }
     }
 }
