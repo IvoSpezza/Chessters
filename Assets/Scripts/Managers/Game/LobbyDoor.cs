@@ -17,10 +17,13 @@ public class LobbyDoor : NetworkBehaviour
     [SerializeField] private Button _readyButton;
     [SerializeField] private TMP_Text _readyCountText;
 
-    [Header("[TEMP: inspector]")]
-    [Tooltip("Minimo de jugadores para iniciar. Pasara a un SO de config editable antes de hostear")]
-    [SerializeField, Min(1)] private int _minPlayers = 1;
-    [SerializeField] private bool _debugLogs;
+    [SerializeField] private TMP_Text _codeText;
+    [SerializeField] private Button _startGameButton;
+
+
+    [Tooltip("Opcional: botón que copia el código al portapapeles.")]
+    [SerializeField] private Button _copyButton;   
+    
 
     private NetworkList<ulong> _ready;
 
@@ -35,13 +38,26 @@ public class LobbyDoor : NetworkBehaviour
     private void Awake()
     {
         _ready = new NetworkList<ulong>(null, NetworkVariableReadPermission.Everyone);
-
+        
         if (!GetComponent<Collider>().isTrigger)
             Debug.LogWarning("[LobbyDoor] El collider de la puerta debe estar en modo Is Trigger.", this);
     }
 
+    private void Start()
+    {
+        string code = SessionManager.instance != null ? SessionManager.instance.JoinCode : "";
+        if (_codeText != null) _codeText.text = string.IsNullOrEmpty(code) ? "" : $"Código: {code}";
+
+        if (_copyButton != null)
+        {
+            _copyButton.gameObject.SetActive(!string.IsNullOrEmpty(code));
+            _copyButton.onClick.AddListener(CopyCode);
+        }
+    }
+
     public override void OnNetworkSpawn()
     {
+        _startGameButton.enabled = false;
         _ready.OnListChanged += HandleReadyChanged;
         if (_readyButton != null) _readyButton.onClick.AddListener(OnReadyClicked);
 
@@ -71,16 +87,15 @@ public class LobbyDoor : NetworkBehaviour
 
         if (IsServer)
         {
-            _inside.Add(body.OwnerClientId);
-            if (_debugLogs) Debug.Log($"[LobbyDoor] SERVIDOR: entro el cliente {body.OwnerClientId}");
+            _inside.Add(body.OwnerClientId);            
         }
 
         if (body.IsOwner)
         {
             _localInside = true;
-            RefreshButton();
-            if (_debugLogs) Debug.Log("[LobbyDoor] LOCAL: entre a la zona");
+            RefreshButton();            
         }
+        RefreshText();
     }
 
     private void OnTriggerExit(Collider other)
@@ -90,16 +105,15 @@ public class LobbyDoor : NetworkBehaviour
         if (IsServer)
         {
             _inside.Remove(body.OwnerClientId);
-            _ready.Remove(body.OwnerClientId);
-            if (_debugLogs) Debug.Log($"[LobbyDoor] SERVIDOR: salio el cliente {body.OwnerClientId}");
+            _ready.Remove(body.OwnerClientId);            
         }
 
         if (body.IsOwner)
         {
             _localInside = false;
-            RefreshButton();
-            if (_debugLogs) Debug.Log("[LobbyDoor] LOCAL: sali de la zona");
+            RefreshButton();            
         }
+        RefreshText();
     }
 
     private static bool TryGetPlayerBody(Collider other, out NetworkObject body)
@@ -110,7 +124,11 @@ public class LobbyDoor : NetworkBehaviour
 
     // ---------------------------------------------------------------- Cliente
 
-    private void OnReadyClicked() => SetReadyRpc();
+    private void OnReadyClicked()
+    {
+        RefreshText();
+        SetReadyRpc();
+    }
 
     private void RefreshButton()
     {
@@ -136,21 +154,14 @@ public class LobbyDoor : NetworkBehaviour
         // Solo vale si el servidor ya vio a ese jugador dentro de la zona
         if (!_inside.Contains(sender)) return;
         if (!_ready.Contains(sender)) _ready.Add(sender);
-    }
+        if(IsServer && PlayerSoul.All.Count == _ready.Count) _startGameButton.enabled = true;
+    }      
 
-    private void Update()
+    public void StartGame()
     {
-        if (!IsSpawned || !IsServer) return;
-
         CleanUp();
-
-        if (_started) return;
-
-        int total = PlayerSoul.All.Count;
-        if (total < _minPlayers || _ready.Count != total) return;
-
+        if (PlayerSoul.All.Count != _ready.Count) return;
         _started = true;
-        // TODO: animacion de apertura de la puerta antes de cargar la escena
         SessionManager.instance.StartGame();
     }
 
@@ -167,5 +178,16 @@ public class LobbyDoor : NetworkBehaviour
 
         for (int i = _ready.Count - 1; i >= 0; i--)
             if (!_inside.Contains(_ready[i])) _ready.RemoveAt(i);
+    }
+
+
+    private void OnDestroy()
+    {
+        if (_copyButton != null) _copyButton.onClick.RemoveListener(CopyCode);
+    }
+
+    private void CopyCode()
+    {
+        GUIUtility.systemCopyBuffer = SessionManager.instance.JoinCode;
     }
 }

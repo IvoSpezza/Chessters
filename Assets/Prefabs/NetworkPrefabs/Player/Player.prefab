@@ -474,7 +474,6 @@ GameObject:
   - component: {fileID: 6255081064242052920}
   - component: {fileID: 938564086210004217}
   - component: {fileID: 7340782329846105388}
-  - component: {fileID: 275717849120187497}
   - component: {fileID: -8474937855633443832}
   - component: {fileID: 3592586329528818296}
   - component: {fileID: 630781322895359913}
@@ -546,7 +545,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2529751033
+  GlobalObjectIdHash: 721846257
   InScenePlacedSourceGlobalObjectIdHash: 0
   m_InScenePlacedDisabledByDefault: 0
   DeferredDespawnTick: 0
@@ -746,21 +745,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
   _catalog: {fileID: 11400000, guid: 833ca3c583436bd47be364e33048b6aa, type: 2}
-  _startingBackpackIds: 650000006a000000
---- !u!114 &275717849120187497
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8095176157960358633}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b073e9aad45a8494b924ecd14533f867, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::InventoryDebug
-  _visible: 1
-  _width: 406.4
+  _startingBackpackIds: 65000000
 --- !u!114 &-8474937855633443832
 MonoBehaviour:
   m_ObjectHideFlags: 0

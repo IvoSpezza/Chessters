@@ -12,7 +12,7 @@ public class Health : NetworkBehaviour, IDamageable
     public bool IsDead => _actualHealth.Value <= 0f;
 
     // para la ui (vida actual, vida maxima) \\
-    public event Action<float, float> OnHealthChanged; // desde algun lugar se llama
+    public event Action<float, float> OnHealthChanged; 
     public event Action<Health> OnDied;
 
     public override void OnNetworkSpawn()
@@ -26,10 +26,13 @@ public class Health : NetworkBehaviour, IDamageable
 
         if (IsServer) _actualHealth.Value = MaxHealth;
         OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
+
+        if (IsOwner && TryGetComponent(out PlayerInventory _) && UiInventoryManager.Instance != null) UiInventoryManager.Instance.SetUpHealth(this);        
     }
 
     public override void OnNetworkDespawn()
     {
+        if (IsOwner && TryGetComponent(out PlayerInventory _) && UiInventoryManager.Instance != null) UiInventoryManager.Instance.ClearHealth();
         OnDied -= OnDead;
 
         _actualHealth.OnValueChanged -= HandleHealthChanged;

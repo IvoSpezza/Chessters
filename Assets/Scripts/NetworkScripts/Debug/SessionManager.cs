@@ -1,12 +1,22 @@
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
+using Unity.Services.Authentication;
+using Unity.Services.Core;
+using Unity.Services.Relay;
+using Unity.Services.Relay.Models;
 using UnityEngine;
-using UnityEngine.Serialization;
 using UnityEngine.SceneManagement;
 
 public class SessionManager : MonoBehaviour
 {
+    private enum Cifration
+    {
+        dtls,
+        udp
+    }
     public static SessionManager instance { get; private set; }
 
     [Header("Red")]
@@ -14,34 +24,47 @@ public class SessionManager : MonoBehaviour
     [SerializeField] private ushort port = 7777;
     [SerializeField] private int maxPlayers = 6;
 
+    [Header("Relay")]
+    [Tooltip("Si está tildado se usa Unity Relay con join code. Si no, conexión directa por IP.")]
+    [SerializeField] private bool useRelay = true;
+    [Tooltip("dtls = cifrado (recomendado). udp = sin cifrar.")]
+    [SerializeField] private Cifration _connectionTypeEnum = Cifration.dtls;
+    [Tooltip("Opcional: perfil de autenticación. Útil si dos instancias locales comparten el mismo Player ID.")]
+    [SerializeField] private string authProfile = "";
+
     [Header("Escenas")]
     [SerializeField] private string menuScene = "MainMenu";
     [SerializeField] private string lobbyScene = "Lobby";
     [SerializeField] private string gameScene = "Game";
 
     [Header("Cuerpo")]
-    [Tooltip("Prefab del CUERPO del jugador. El alma es el Default Player Prefab del NetworkManager.")]    
+    [Tooltip("Prefab del CUERPO del jugador. El alma es el Default Player Prefab del NetworkManager.")]
     [SerializeField] private NetworkObject bodyPrefab;
 
+    private string _connectionType;
     private enum SessionState { Menu, Lobby, InGame }
     private SessionState _state = SessionState.Menu;
-    private bool _sceneReady;   // true cuando la escena actual ya termino de cargar en el servidor
+    private bool _sceneReady;   
+    private bool _connecting;   
+
+    /// <summary>Join code de la sesion actual (vacio si se usa IP directa o no hay sesion).</summary>
+    public string JoinCode { get; private set; } = "";
+
+    /// <summary>Se dispara cuando falla el inicio de host o cliente. La UI muestra el mensaje.</summary>
+    public event Action<string> OnConnectionError;
 
     private NetworkManager Net => NetworkManager.Singleton;
 
     private void Awake()
     {
-       
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
+        _connectionType = _connectionTypeEnum.Equals(Cifration.dtls) ? "dtls" : "udp";
         DontDestroyOnLoad(gameObject);
     }
-   
 
     private void Start()
     {
-        var cfg = Net.NetworkConfig;
-        
         Net.OnServerStarted += OnServerStarted;
         Net.OnServerStopped += OnServerStopped;
         Net.OnClientDisconnectCallback += OnClientDisconnected;
@@ -58,17 +81,86 @@ public class SessionManager : MonoBehaviour
     }
 
     // ---------- API para la UI ----------
-    public void StartHost(string address = null)
+    public async void StartHost(string address = null)
     {
-        var cfg = Net.NetworkConfig;        
-        SetConnectionData(address);
-        Net.StartHost();
+        if (_connecting || Net.IsListening) return;
+        _connecting = true;
+
+        try
+        {
+            if (useRelay)
+            {
+                await InitServicesAsync();
+
+                // El host no cuenta como conexion de Relay: maxPlayers - 1
+                Allocation allocation = await RelayService.Instance.CreateAllocationAsync(maxPlayers - 1);
+                JoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+
+                var utp = Net.GetComponent<UnityTransport>();
+                utp.SetRelayServerData(AllocationUtils.ToRelayServerData(allocation, _connectionType));
+                Debug.Log($"[Relay] Host listo. Join code: {JoinCode}");
+            }
+            else
+            {
+                SetConnectionData(address);
+            }
+
+            if (!Net.StartHost()) Fail("No se pudo iniciar el host.");
+        }
+        catch (Exception e)
+        {
+            Fail("No se pudo crear la sala. Revisá tu conexión a internet.", e);
+        }
+        finally
+        {
+            _connecting = false;
+        }
     }
 
-    public void StartClient(string address)
+    /// <summary>Con Relay, "address" es el join code. Sin Relay, es la IP.</summary>
+    public async void StartClient(string address)
     {
-        SetConnectionData(address);
-        Net.StartClient();
+        if (_connecting || Net.IsListening) return;
+        _connecting = true;
+
+        try
+        {
+            if (useRelay)
+            {
+                string code = (address ?? "").Trim().ToUpperInvariant();
+                if (string.IsNullOrEmpty(code))
+                {
+                    Fail("Ingresá el código de la sala.");
+                    return;
+                }
+
+                await InitServicesAsync();
+
+                JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(code);
+                var utp = Net.GetComponent<UnityTransport>();
+                utp.SetRelayServerData(AllocationUtils.ToRelayServerData(joinAllocation, _connectionType));
+                JoinCode = code;
+                Debug.Log($"[Relay] Unido con el código {code}");
+            }
+            else
+            {
+                SetConnectionData(address);
+            }
+
+            if (!Net.StartClient()) Fail("No se pudo iniciar el cliente.");
+        }
+        catch (RelayServiceException e)
+        {
+            Fail("Código inválido o sala no disponible.", e);
+        }
+        catch (Exception e)
+        {
+            Fail("No se pudo conectar. Revisá tu conexión a internet.", e);
+        }
+        finally
+        {
+            _connecting = false;
+        }
     }
 
     public void StartGame()
@@ -83,6 +175,29 @@ public class SessionManager : MonoBehaviour
     {
         var utp = Net.GetComponent<UnityTransport>();
         utp.SetConnectionData(string.IsNullOrWhiteSpace(address) ? ipAddress : address, port);
+    }
+
+    // ---------- Servicios de Unity (Relay) ----------
+    // Se inicializa una sola vez y se reutiliza (la sesion anonima queda abierta).
+    private async Task InitServicesAsync()
+    {
+        if (UnityServices.State != ServicesInitializationState.Initialized)
+        {
+            var options = new InitializationOptions();
+            if (!string.IsNullOrEmpty(authProfile)) options.SetProfile(authProfile);
+            await UnityServices.InitializeAsync(options);
+        }
+
+        if (!AuthenticationService.Instance.IsSignedIn)
+            await AuthenticationService.Instance.SignInAnonymouslyAsync();
+    }
+
+    private void Fail(string message, Exception e = null)
+    {
+        JoinCode = "";
+        if (e != null) Debug.LogException(e);
+        Debug.LogWarning($"[SessionManager] {message}");
+        OnConnectionError?.Invoke(message);
     }
 
     // ---------- Server ----------
@@ -102,6 +217,7 @@ public class SessionManager : MonoBehaviour
     {
         _state = SessionState.Menu;
         _sceneReady = false;
+        JoinCode = "";
         PlayerSoul.OnServerSoulSpawned -= OnSoulSpawned;
         if (Net.SceneManager != null)
         {
@@ -182,6 +298,7 @@ public class SessionManager : MonoBehaviour
         // Solo me interesa cuando soy yo el que se desconectó (cliente, no host)
         if (Net.IsServer) return;
         Debug.Log($"Desconectado: {Net.DisconnectReason}");
+        JoinCode = "";
         SceneManager.LoadScene(menuScene);
     }
 }

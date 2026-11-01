@@ -394,7 +394,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7062666287368123220}
-  - component: {fileID: 4604491017060343815}
   - component: {fileID: 1223877588857885661}
   - component: {fileID: 41926388675229530}
   m_Layer: 0
@@ -424,29 +423,6 @@ Transform:
   - {fileID: 4936318772057704624}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -45, z: 0}
---- !u!114 &4604491017060343815
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1938266369097274972}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8aadc6fbec05d96468b313fbac482628, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::RoomLayout
-  _arrivalSpawns:
-  - {fileID: 886352297597319901}
-  - {fileID: 6818160455072254943}
-  - {fileID: 3543757003825246191}
-  - {fileID: 5096244482391678415}
-  - {fileID: 5865091212219023277}
-  - {fileID: 8843812063762426964}
-  _arenaSpawns:
-  - {fileID: 5900869156225680952}
-  - {fileID: 5404121878711328456}
-  _spawnPoints: []
 --- !u!114 &1223877588857885661
 MonoBehaviour:
   m_ObjectHideFlags: 0

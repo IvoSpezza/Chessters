@@ -76,6 +76,7 @@ public class PlayerInventory : NetworkBehaviour
 
             foreach (int id in _startingBackpackIds) AddItem(id);
         }
+        if (IsOwner && UiInventoryManager.Instance != null) UiInventoryManager.Instance.SetUpInv(this,_stats);
 
         // OnListChanged no se dispara con el estado inicial: forzamos un primer calculo
         // (cubre a los clientes que se unen tarde).
@@ -84,6 +85,8 @@ public class PlayerInventory : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
+        if (IsOwner && UiInventoryManager.Instance != null) UiInventoryManager.Instance.ClearInv(this);
+
         _equipped.OnListChanged -= HandleEquipmentListChanged;
         _accessories.OnListChanged -= HandleEquipmentListChanged;
         _backpack.OnListChanged -= HandleBackpackListChanged;
@@ -320,5 +323,10 @@ public class PlayerInventory : NetworkBehaviour
             case ArmorSlot.Boots: return EquipSlot.Boots;
             default: return EquipSlot.Helmet;
         }
+    }
+
+    public void OnInventoryToggle()
+    {
+        UiInventoryManager.Instance.OnInventoryToggle();
     }
 }

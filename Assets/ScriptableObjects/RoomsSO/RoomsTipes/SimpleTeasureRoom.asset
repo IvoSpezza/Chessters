@@ -15,7 +15,7 @@ MonoBehaviour:
   _roomID: 102
   _roomName: SimpleTeasureRoom
   _roomPrefab: {fileID: 3645618417913605213, guid: 779cb7c42e4304246a0857dd6b06abb5, type: 3}
-  _chestPrefab: {fileID: 0}
+  _chestPrefab: {fileID: 1557680611249166396, guid: 54aeb07e27ffca746ab3fb6457d9a9c8, type: 3}
   _curseChance: 0.25
   _treasureItemCount: 3
   _possibleCurses:
