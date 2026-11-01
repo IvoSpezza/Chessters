@@ -477,6 +477,7 @@ GameObject:
   - component: {fileID: 275717849120187497}
   - component: {fileID: -8474937855633443832}
   - component: {fileID: 3592586329528818296}
+  - component: {fileID: 630781322895359913}
   - component: {fileID: -4055112045929824531}
   m_Layer: 6
   m_Name: Player
@@ -545,7 +546,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 721846257
+  GlobalObjectIdHash: 2529751033
   InScenePlacedSourceGlobalObjectIdHash: 0
   m_InScenePlacedDisabledByDefault: 0
   DeferredDespawnTick: 0
@@ -726,6 +727,11 @@ MonoBehaviour:
   _moveSpeed: 10
   _damage: 5
   _atackSpeed: 1
+  _perLevel:
+    MaxHealth: 10
+    Damage: 1
+    AttackSpeed: 0
+    MoveSpeed: 0.2
 --- !u!114 &7340782329846105388
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -740,7 +746,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
   _catalog: {fileID: 11400000, guid: 833ca3c583436bd47be364e33048b6aa, type: 2}
-  _startingBackpackIds: 65000000
+  _startingBackpackIds: 650000006a000000
 --- !u!114 &275717849120187497
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -773,9 +779,9 @@ MonoBehaviour:
   _enemyMask:
     serializedVersion: 2
     m_Bits: 8
-  _attackOriginHeight: 0.5
+  _attackOriginHeight: -0.45
   _cooldownTolerance: 0.1
-  _debugLogs: 1
+  _debugLogs: 0
 --- !u!114 &3592586329528818296
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -791,6 +797,19 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   _handSocket1: {fileID: 1719316717462195040}
   _handSocket2: {fileID: 602797517265541500}
+--- !u!114 &630781322895359913
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8095176157960358633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ca5d4b0e3583fb43b65a66bf77bc564, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerCurses
+  ShowTopMostFoldoutHeaderGroup: 1
 --- !u!114 &-4055112045929824531
 MonoBehaviour:
   m_ObjectHideFlags: 0

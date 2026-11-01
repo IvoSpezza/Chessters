@@ -245,15 +245,17 @@ MonoBehaviour:
     initialLootCount: 5
   _lootCatalog: {fileID: 11400000, guid: 833ca3c583436bd47be364e33048b6aa, type: 2}
   _roomCatalog: {fileID: 11400000, guid: 8897c11ef1f1190479b66541a4e38adc, type: 2}
-  _roomAnchor: {fileID: 1847459045}
-  _preparationSeconds: 20
+  _roomAnchorA: {fileID: 1847459045}
+  _roomAnchorB: {fileID: 1491282534}
+  _preparationSeconds: 15
   _doorSeconds: 0
-  _restSeconds: 5
+  _enterRoomSeconds: 1
   _planningSeconds: 15
   _planningExtensionSeconds: 5
   _countdownSeconds: 3
   _resolutionSeconds: 3
-  _allowAttackOutsideCombat: 0
+  _restSeconds: 5
+  _allowAttackOutsideCombat: 1
 --- !u!4 &99919788
 Transform:
   m_ObjectHideFlags: 0
@@ -987,6 +989,37 @@ Transform:
   - {fileID: 1550575502}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1491282533
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1491282534}
+  m_Layer: 0
+  m_Name: RoomAnchor 2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1491282534
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1491282533}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -200, y: -0, z: -200}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1550575498
 GameObject:
   m_ObjectHideFlags: 0
@@ -1125,7 +1158,7 @@ Transform:
   m_GameObject: {fileID: 1847459044}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2000, y: 0, z: 2000}
+  m_LocalPosition: {x: 300, y: 0, z: 300}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1297,5 +1330,6 @@ SceneRoots:
   - {fileID: 1331482840}
   - {fileID: 1363756415}
   - {fileID: 1847459045}
+  - {fileID: 1491282534}
   - {fileID: 99919788}
   - {fileID: 948603912}

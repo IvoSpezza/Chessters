@@ -24,7 +24,7 @@ public enum EquipSlot
 /// - Todo se guarda como IDs (int). El servidor es el unico que escribe.
 /// - Todos los peers recalculan los modifiers de PlayerStats a partir de los IDs equipados.
 /// </summary>
-[RequireComponent(typeof(PlayerStats))]
+[RequireComponent(typeof(Stats))]
 public class PlayerInventory : NetworkBehaviour
 {
     public const int EmptyID = ItemCatalog.EmptyID;   // -1: slot vacio
@@ -40,7 +40,7 @@ public class PlayerInventory : NetworkBehaviour
     private NetworkList<int> _accessories;
     private NetworkList<int> _backpack;     // lectura solo para el dueño
 
-    private PlayerStats _stats;
+    private Stats _stats;
     private bool _dirty;
     private readonly List<StatModifier> _modifierBuffer = new List<StatModifier>();
 
@@ -63,7 +63,7 @@ public class PlayerInventory : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        _stats = GetComponent<PlayerStats>();
+        _stats = GetComponent<Stats>();
 
         _equipped.OnListChanged += HandleEquipmentListChanged;
         _accessories.OnListChanged += HandleEquipmentListChanged;

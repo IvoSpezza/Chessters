@@ -5,7 +5,7 @@ using UnityEngine;
 public class Health : NetworkBehaviour, IDamageable
 {
     private readonly NetworkVariable<float> _actualHealth = new NetworkVariable<float>();
-    private PlayerStats _stats;
+    private Stats _stats;
 
     public float CurrentHealth => _actualHealth.Value;
     public float MaxHealth => _stats != null ? _stats.GetStat(StatType.MaxHealth) : 0f;
@@ -13,11 +13,11 @@ public class Health : NetworkBehaviour, IDamageable
 
     // para la ui (vida actual, vida maxima) \\
     public event Action<float, float> OnHealthChanged; // desde algun lugar se llama
-    public event Action OnDied;
+    public event Action<Health> OnDied;
 
     public override void OnNetworkSpawn()
     {
-        _stats = GetComponent<PlayerStats>();
+        _stats = GetComponent<Stats>();
 
         _actualHealth.OnValueChanged += HandleHealthChanged;
         _stats.OnStatChanged += HandleStatChanged;
@@ -39,7 +39,9 @@ public class Health : NetworkBehaviour, IDamageable
     //SERVER ONLY\\
     public void TakeDamage(float damage)
     {
+        Debug.Log("SentiElToke");
         if (!IsServer || IsDead || damage <= 0) return;
+        Debug.Log(" y perdi vida");
         _actualHealth.Value = Mathf.Max(0f, _actualHealth.Value - damage);
     }
 
@@ -64,7 +66,7 @@ public class Health : NetworkBehaviour, IDamageable
     {
         Debug.Log($"[Health] {name} IsOwner={IsOwner} {previous}/{MaxHealth} -> {current}/{MaxHealth}");
         OnHealthChanged?.Invoke(current, MaxHealth);
-        if (previous > 0f && current <= 0f) OnDied?.Invoke();
+        if (previous > 0f && current <= 0f) OnDied?.Invoke(this);
     }
 
     private void HandleStatChanged(StatType type)
@@ -85,8 +87,8 @@ public class Health : NetworkBehaviour, IDamageable
         TakeDamage(damage);
     }
 
-    private void OnDead()
+    private void OnDead(Health deadMonster)
     {
-        Debug.Log($"MEMORI{IsOwner}, vida restante: {_actualHealth.Value}");
+        Debug.Log($"Murio{deadMonster.gameObject}, vida restante: {_actualHealth.Value}");
     }
 }

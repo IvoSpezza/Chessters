@@ -18,7 +18,7 @@ using UnityEngine.XR;
 /// Ataques por seg = stat AttackSpeed final * finalAttackSpeed del arma.
 /// Arma de dos manos: ambos clicks hacen el mismo ataque y comparten cooldown.
 /// </summary>
-[RequireComponent(typeof(PlayerInventory), typeof(PlayerStats), typeof(Health))]
+[RequireComponent(typeof(PlayerInventory), typeof(Stats), typeof(Health))]
 public class PlayerCombat : NetworkBehaviour
 {
     private const float MIN_ATTACK_INTERVAL = 0.05f;
@@ -31,6 +31,7 @@ public class PlayerCombat : NetworkBehaviour
     [Tooltip("Capas que reciben daño.")]
     [SerializeField] private LayerMask _enemyMask;
     [Tooltip("Altura sobre el pivote del cuerpo desde donde salen los golpes y proyectiles.")]
+
     [SerializeField] private float _attackOriginHeight = 0.5f;
     [Tooltip("Margen en segundos para absorber el jitter de red al validar el cooldown en el servidor.")]
     [SerializeField, Min(0)] private float _cooldownTolerance = 0.1f;
@@ -42,7 +43,7 @@ public class PlayerCombat : NetworkBehaviour
 
 
     private PlayerInventory _inventory;
-    private PlayerStats _stats;
+    private Stats _stats;
     private Health _health;
     private LookToMause _lookToMause;
     private PlayerInput _playerInput;
@@ -64,7 +65,7 @@ public class PlayerCombat : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         _inventory = GetComponent<PlayerInventory>();
-        _stats = GetComponent<PlayerStats>();
+        _stats = GetComponent<Stats>();
         _health = GetComponent<Health>();
         _visuals = GetComponent<PlayerAttackVisuals>();        
 
@@ -141,8 +142,8 @@ public class PlayerCombat : NetworkBehaviour
         _serverNext[cooldownIndex] = now + GetAttackInterval(weapon);
                 
         aimDirection.y = 0f;
-        Vector3 dir = aimDirection.sqrMagnitude > 0.0001f ? aimDirection.normalized : transform.forward;
-               
+        Vector3 dir = aimDirection.sqrMagnitude > 0.0001f ? aimDirection.normalized : transform.forward;                
+
         var context = new WeaponDataBase.AttackContext
         {
             Owner = gameObject,

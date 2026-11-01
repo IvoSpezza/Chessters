@@ -11,14 +11,14 @@ public class InventoryDebug : MonoBehaviour
     [SerializeField] private float _width = 330f;
 
     private PlayerInventory _inventory;
-    private PlayerStats _stats;
+    private Stats _stats;
     private Health _health;
     private Vector2 _scroll;
 
     private void Awake()
     {
         _inventory = GetComponent<PlayerInventory>();
-        _stats = GetComponent<PlayerStats>();
+        _stats = GetComponent<Stats>();
         _health = GetComponent<Health>();
     }
 

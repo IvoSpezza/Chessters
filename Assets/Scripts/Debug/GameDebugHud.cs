@@ -2,11 +2,13 @@ using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
-/// [TEMP] Panel OnGUI para probar fases, turnos y planificacion sin UI. Ponerlo en la escena Game.
+/// [TEMP] Panel OnGUI para probar fases, turnos, planificacion y cofres sin UI. Ponerlo en la escena Game.
 /// Se borra cuando exista la UI real.
 /// </summary>
 public class GameDebugHud : MonoBehaviour
 {
+    private Chest _chest;
+
     private void OnGUI()
     {
         GameManager gm = GameManager.Instance;
@@ -14,7 +16,7 @@ public class GameDebugHud : MonoBehaviour
 
         ulong me = NetworkManager.Singleton.LocalClientId;
 
-        GUILayout.BeginArea(new Rect(Screen.width - 290, 10, 280, 240), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(Screen.width - 290, 10, 280, 280), GUI.skin.box);
         GUILayout.Label($"Fase: {gm.Phase}");
         GUILayout.Label($"Piso {gm.Floor} - Turno {gm.TurnIndex}");
         GUILayout.Label($"Turno de: {gm.CurrentTurnPlayer}{(gm.IsMyTurn ? " (VOS)" : "")}");
@@ -33,6 +35,17 @@ public class GameDebugHud : MonoBehaviour
 
             if (GUILayout.Button("[TEMP] Modificar combate (+tiempo)"))
                 gm.DebugModifyCombatRpc();
+        }
+
+        if (gm.Phase == GamePhase.ChestDecision && gm.IsMyTurn)
+        {
+            if (_chest == null) _chest = FindFirstObjectByType<Chest>();
+
+            if (_chest != null && !_chest.IsOpened)
+            {
+                if (GUILayout.Button("[TEMP] Abrir cofre")) _chest.OpenRpc();
+                if (GUILayout.Button("[TEMP] Pasar del cofre")) _chest.PassRpc();
+            }
         }
 
         GUILayout.EndArea();

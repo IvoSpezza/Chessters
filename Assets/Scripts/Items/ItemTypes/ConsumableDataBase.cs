@@ -1,8 +1,9 @@
 public enum ConsumableType
 {
     Potion,
-    Bomb,
-    Trap
+    TepmModifier,
+    Spawn,
+    Curse
 }
 
 public abstract class ConsumableDataBase : ItemDataBase

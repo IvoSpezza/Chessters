@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 3834700706343381842}
   - component: {fileID: 5443141172453577403}
   - component: {fileID: 2875496484270435460}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -121,7 +121,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4138490738679997549}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Body
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -158,7 +158,7 @@ GameObject:
   - component: {fileID: 1563035065836250813}
   - component: {fileID: 5572340833092196279}
   - component: {fileID: 5679382401367501981}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -269,8 +269,8 @@ GameObject:
   - component: {fileID: 722089225482466475}
   - component: {fileID: 2779261123347552151}
   - component: {fileID: 931803436008144789}
-  - component: {fileID: 7647929528172594718}
-  m_Layer: 0
+  - component: {fileID: 4147783844380900120}
+  m_Layer: 3
   m_Name: Manniquin
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -305,7 +305,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1069942728
+  GlobalObjectIdHash: 3103649006
   InScenePlacedSourceGlobalObjectIdHash: 0
   m_InScenePlacedDisabledByDefault: 0
   DeferredDespawnTick: 0
@@ -333,7 +333,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
   ShowTopMostFoldoutHeaderGroup: 1
---- !u!114 &7647929528172594718
+--- !u!114 &4147783844380900120
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -344,11 +344,16 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e489272e24bab7a499764474c7ea95d3, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
-  _maxHealth: 50
+  m_EditorClassIdentifier: Assembly-CSharp::Stats
+  _maxHealth: 40
   _moveSpeed: 10
   _damage: 5
   _atackSpeed: 1
+  _perLevel:
+    MaxHealth: 5
+    Damage: 5
+    AttackSpeed: 0
+    MoveSpeed: 3
 --- !u!1 &8263909226224431488
 GameObject:
   m_ObjectHideFlags: 0
@@ -361,7 +366,7 @@ GameObject:
   - component: {fileID: 8817207320723558317}
   - component: {fileID: 6877002689377357470}
   - component: {fileID: 138380159770138994}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}

@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Reparto de items aleatorios. Solo servidor.
-/// Sin filtrar por tipo (el arma inicial ya viene de la mochila de debug del PlayerInventory).
+/// Sin filtrar por tipo, salvo las maldiciones (salen de cofres y recompensas, no del loot comun).
 /// TODO: pools por piso / rareza cuando existan.
 /// </summary>
 public static class LootService
@@ -16,7 +16,7 @@ public static class LootService
             GiveRandom(inventory, countPerPlayer, catalog, pool);
     }
 
-    /// <summary>Para resurrecciones: misma cantidad que el loot inicial.</summary>
+    /// <summary>Para resurrecciones y cofres de tesoro.</summary>
     public static void GiveRandom(PlayerInventory inventory, int count, ItemCatalog catalog)
     {
         GiveRandom(inventory, count, catalog, new List<int>());
@@ -32,7 +32,7 @@ public static class LootService
 
         for (int i = 0; i < count; i++)
         {
-            if (pool.Count == 0) RefillPool(pool, catalog);
+            if (pool.Count == 0) Refill(pool, catalog);
             if (pool.Count == 0) return;
 
             int index = Random.Range(0, pool.Count);
@@ -41,16 +41,31 @@ public static class LootService
         }
     }
 
-
-    private static void RefillPool(List<int> pool, ItemCatalog catalog)
+    private static void Refill(List<int> pool, ItemCatalog catalog)
     {
         foreach (ItemDataBase item in catalog.Weapons)
-            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
-        foreach (ItemDataBase item in catalog.Armor)
-            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
+        {
+            if (item == null || item.itemID < 0) continue;
+            if (item is CurseData) continue;
+            pool.Add(item.itemID);
+        }
         foreach (ItemDataBase item in catalog.Accesoris)
-            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
+        {
+            if (item == null || item.itemID < 0) continue;
+            if (item is CurseData) continue;
+            pool.Add(item.itemID);
+        }
+        foreach (ItemDataBase item in catalog.Armor)
+        {
+            if (item == null || item.itemID < 0) continue;
+            if (item is CurseData) continue;
+            pool.Add(item.itemID);
+        }
         foreach (ItemDataBase item in catalog.Consumables)
-            if (item != null && item.itemID >= 0) pool.Add(item.itemID);
+        {
+            if (item == null || item.itemID < 0) continue;
+            if (item is CurseData) continue;
+            pool.Add(item.itemID);
+        }
     }
 }

@@ -29,7 +29,7 @@ using UnityEngine.InputSystem;
 ///
 /// La velocidad maxima sale de PlayerStats (StatType.MoveSpeed).
 /// </summary>
-[RequireComponent(typeof(PlayerStats), typeof(Rigidbody), typeof(CapsuleCollider))]
+[RequireComponent(typeof(Stats), typeof(Rigidbody), typeof(CapsuleCollider))]
 public class PlayerMovement : NetworkBehaviour
 {
     private const float STOPVALUE = 0.01f;
@@ -72,7 +72,7 @@ public class PlayerMovement : NetworkBehaviour
     private AnticipatedNetworkTransform _ant;
     private LookToMause _lookToMause;
     private PlayerInput _playerInput;
-    private PlayerStats _stats;
+    private Stats _stats;
 
     // Medidas de la capsula en espacio mundo, relativas a _pos (se calculan al spawnear)
     private float _capsuleRadius;
@@ -119,7 +119,7 @@ public class PlayerMovement : NetworkBehaviour
         _playerInput = GetComponent<PlayerInput>();
         _lookToMause = GetComponent<LookToMause>();
         _ant = GetComponent<AnticipatedNetworkTransform>();
-        _stats = GetComponent<PlayerStats>();
+        _stats = GetComponent<Stats>();
         _rb = GetComponent<Rigidbody>();
         _capsule = GetComponent<CapsuleCollider>();
 
