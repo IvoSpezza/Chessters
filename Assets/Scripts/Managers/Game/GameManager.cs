@@ -892,6 +892,7 @@ public partial class GameManager : NetworkBehaviour
         int newLevel = Mathf.Min(_settings.targetLevel, turnOwner.Level + levels);
         turnOwner.ServerSetLevel(newLevel);
         ServerApplyPostCombatRecovery();
+        PlayerSoul.ServerAnnounceChatMessage($"--:{turnOwner.PlayerName} A ganado el combate!--");
         Debug.Log($"[Game] El dueño del turno {turnOwner.OwnerClientId} sube a nivel {newLevel}.");
     }
 
@@ -914,33 +915,37 @@ public partial class GameManager : NetworkBehaviour
             {
                 soul.ServerSetAlive(true);
                 ServerApplyPostCombatRecovery(health);
+                PlayerSoul.ServerAnnounceChatMessage($"--:{soul.PlayerName} a perdido, pero logro escapar--");
                 Debug.Log($"[Game] {clientId} escapa de la consecuencia ({roll}/20).");
                 continue;
             }
 
-            ApplyBadThing(soul, health, badThing);
+            string consequence = ApplyBadThing(soul, health, badThing);
+            PlayerSoul.ServerAnnounceChatMessage($"--:{soul.PlayerName} a perdido y no escapo, {consequence}--");
             Debug.Log($"[Game] {clientId} falla la salvacion ({roll}/20) y recibe {(badThing != null ? badThing.type.ToString() : BadThingType.None.ToString())}.");
         }
     }
 
-    private void ApplyBadThing(PlayerSoul soul, Health health, BadThing badThing)
+    private string ApplyBadThing(PlayerSoul soul, Health health, BadThing badThing)
     {
         if (badThing == null || badThing.type == BadThingType.None)
         {
             soul.ServerSetAlive(true);
             ServerApplyPostCombatRecovery(health);
-            return;
+            return "no recibio una consecuencia";
         }
 
+        string result;
         switch (badThing.type)
         {
             case BadThingType.Death:
                 ServerKillPlayer(soul);
-                return;
+                return "murio";
 
             case BadThingType.LoseItems:
                 if (soul.TryGetBodyComponent(out PlayerInventory inventory))
                 {
+                    int previousCount = inventory.BackpackCount;
                     List<ItemDataBase> backpack = inventory.GetBackpack();
                     int itemsToLose = Mathf.Min(Mathf.Max(0, badThing.amount), backpack.Count);
                     for (int i = 0; i < itemsToLose; i++)
@@ -949,11 +954,28 @@ public partial class GameManager : NetworkBehaviour
                         inventory.RemoveItem(backpack[index].itemID);
                         backpack.RemoveAt(index);
                     }
+                    int lostCount = previousCount - inventory.BackpackCount;
+                    if (lostCount > 0)
+                        result = lostCount == 1 ? "perdio 1 tesoro" : $"perdio {lostCount} tesoros";
+                    else
+                        result = "no perdio tesoros";
                 }
+                else result = "no perdio tesoros";
                 break;
 
             case BadThingType.LoseLevels:
+            {
+                int previousLevel = soul.Level;
                 soul.ServerSetLevel(Mathf.Max(1, soul.Level - Mathf.Max(0, badThing.amount)));
+                int lostLevels = previousLevel - soul.Level;
+                if (lostLevels > 0)
+                    result = lostLevels == 1 ? "perdio 1 nivel" : $"perdio {lostLevels} niveles";
+                else
+                    result = "no perdio niveles";
+                break;
+            }
+            default:
+                result = "no recibio una consecuencia";
                 break;
         }
 
@@ -961,6 +983,7 @@ public partial class GameManager : NetworkBehaviour
         // vuelve con la vida restaurada para poder continuar el turno.
         soul.ServerSetAlive(true);
         ServerApplyPostCombatRecovery(health);
+        return result;
     }
 
     private void ServerKillPlayer(PlayerSoul soul)

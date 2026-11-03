@@ -1,7 +1,7 @@
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>Entrada de acciones de cliente. Cada RPC valida emisor y fase antes de pedir cambios al servidor.</summary>
+/// <summary>Unificador de RPC.</summary>
 public partial class GameManager
 {
     /// <summary>El jugador de turno ofrece parte del botín del combate a un posible ayudante.</summary>

@@ -78,12 +78,22 @@ public class Chest : NetworkBehaviour
         {
             case ChestType.Treasure:
                 if (soul.TryGetBodyComponent(out PlayerInventory inventory))
+                {
+                    int beforeCount = inventory.BackpackCount;
                     LootService.GiveRandom(inventory, _itemCount, inventory.Catalog);
+                    int obtainedCount = inventory.BackpackCount - beforeCount;
+                    PlayerSoul.ServerAnnounceChatMessage(
+                        $"--:{soul.PlayerName} a obtenido {obtainedCount} tesoros!--");
+                }
                 break;
 
             case ChestType.Curse:
                 if (_curse != null && soul.TryGetBodyComponent(out PlayerCurses curses))
-                    curses.ServerAddCurse(_curse);
+                {
+                    if (curses.ServerAddCurse(_curse))
+                        PlayerSoul.ServerAnnounceChatMessage(
+                            $"--:{soul.PlayerName} a recibido la maldicion {_curse.itemName}--");
+                }
                 break;
         }
 

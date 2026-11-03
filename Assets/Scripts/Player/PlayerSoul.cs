@@ -200,6 +200,22 @@ public class PlayerSoul : NetworkBehaviour
         else SendChatMessageRpc(cleanMessage);
     }
 
+    /// <summary>Publica un aviso del juego en el chat global. Llamar solo desde el servidor.</summary>
+    public static void ServerAnnounceChatMessage(string message)
+    {
+        NetworkManager manager = NetworkManager.Singleton;
+        if (manager == null || !manager.IsServer || string.IsNullOrWhiteSpace(message)) return;
+
+        PlayerSoul hostSoul = GetFor(NetworkManager.ServerClientId);
+        if (hostSoul == null)
+        {
+            Debug.LogWarning("[Chat] No se pudo anunciar el mensaje del juego: falta el PlayerSoul del host.");
+            return;
+        }
+
+        hostSoul.BroadcastChatMessageRpc(message.Trim());
+    }
+
     [Rpc(SendTo.Server)]
     private void SendChatMessageRpc(string message, RpcParams rpcParams = default)
     {
