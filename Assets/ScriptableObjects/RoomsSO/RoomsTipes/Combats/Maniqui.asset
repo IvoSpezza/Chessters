@@ -17,12 +17,12 @@ MonoBehaviour:
   _description: A higth Level figth... against a maniquin...
   _icon: {fileID: 0}
   _monsterToKill: {fileID: 6505113549014426282, guid: 55b945e901c69ae44812e1b147b095ab, type: 3}
-  _treasureAmount: 3
-  _levelsReward: 2
+  _treasureAmount: 1
+  _levelsReward: 1
   _badThing:
-    type: 2
+    type: 1
     amount: 2
   _escapeCondition:
-    comparison: 0
-    value: 4
+    comparison: 1
+    value: 7
   _monsterCount: 1

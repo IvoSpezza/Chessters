@@ -15,17 +15,17 @@ MonoBehaviour:
   _itemID: 105
   _itemName: FireSword
   _itemDescription: LARGE AND HEAVY
-  _itemIcon: {fileID: 0}
+  _itemIcon: {fileID: 21300000, guid: 79f29ff53d1fa9a4e992c7ed51d27b34, type: 3}
   _modifiers:
   - Type: 1
     Modifier: 0
-    Value: 2
+    Value: 0.25
     Id: 0
-  _handsRequired: 1
-  _finalDamage: 3
-  _finalAttackSpeed: 0.53
-  _visualDuration: 0.2
-  _impactFraction: 0.18
+  _handsRequired: 2
+  _finalDamage: 1.5
+  _finalAttackSpeed: 0.65
+  _visualDuration: 0.3
+  _impactFraction: 0.65
   _visualPrefab: {fileID: 5854372404208283510, guid: 8988805dccc1ff24fa70728e1a48ad60, type: 3}
-  _slashAngle: 240
-  _slashRange: 5
+  _slashAngle: 150
+  _slashRange: 3.8

@@ -2,6 +2,7 @@
 public class ChoosingDoorState : GameState
 {
     public ChoosingDoorState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.ChoosingDoor, GamePhase.EnteringRoom, GamePhase.RestRoom, GamePhase.FinalDuel, GamePhase.GameOver);
 
     public override void Update()
     {

@@ -2,6 +2,7 @@
 public class CombatState : GameState
 {
     public CombatState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.Resolution, GamePhase.ChoosingDoor, GamePhase.RestRoom, GamePhase.FinalDuel, GamePhase.GameOver);
     private CombatEncounter _thisEnconter;
     public override void Enter()
     {

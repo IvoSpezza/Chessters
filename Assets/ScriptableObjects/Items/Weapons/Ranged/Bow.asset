@@ -15,13 +15,19 @@ MonoBehaviour:
   _itemID: 103
   _itemName: Simple Bow
   _itemDescription: Simple bow, nothing more
-  _itemIcon: {fileID: 0}
+  _itemIcon: {fileID: 21300000, guid: d2658fddb8ed5304bb35b57aa2c6237f, type: 3}
   _modifiers: []
   _handsRequired: 2
-  _finalDamage: 1
-  _finalAttackSpeed: 1
+  _finalDamage: 0.8
+  _finalAttackSpeed: 0.9
+  _visualDuration: 0.15
+  _impactFraction: 0.5
   _visualPrefab: {fileID: 8949805968742923104, guid: 20be6cd1545ddf345879a498cb0a047c, type: 3}
   _projectilePrefab: {fileID: 8529188729954956373, guid: bff0db172552d2344927ddf676c9781d, type: 3}
-  _projectileSpeed: 7
-  _projectileLifetime: 4
+  _projectileSpeed: 12
+  _projectileLifetime: 2.5
+  _proyectileSpawnDistance: 0.08
   _preWarmCount: 5
+  _obstacleMask:
+    serializedVersion: 2
+    m_Bits: 0

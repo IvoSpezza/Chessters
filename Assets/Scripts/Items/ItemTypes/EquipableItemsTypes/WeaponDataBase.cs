@@ -50,9 +50,13 @@ public abstract class WeaponDataBase : EquipableItemData
     public struct AttackContext
     {
         public GameObject Owner;
+        public IDamageable Target;
         public Vector3 AtackOrigin;
         public Vector3 AtackDirection;
         public float Damage;
+        public ulong PredictionOwnerClientId;
+        public uint PredictionSequence;
+        public bool HasPredictionKey;
     }
     public struct VisualContext
     {
@@ -75,6 +79,7 @@ public abstract class WeaponDataBase : EquipableItemData
     {
         target = col.GetComponentInParent<IDamageable>();
         if (target == null) return false;
+        if (context.Target != null && target != context.Target) return false;
 
         if (context.Owner != null && col.transform.IsChildOf(context.Owner.transform)) return false;
         return true;

@@ -12,9 +12,10 @@ public class CombatEncounter
     public BaseCombatData Data { get; }
     public RoomLayout Layout { get; }
 
-    /// <summary>Quienes pelean. Hoy solo el dueño del turno. TODO: ayudantes.</summary>
+    /// <summary>Quienes pelean: el dueño del turno y el ayudante que aceptó.</summary>
     public readonly List<ulong> Participants = new List<ulong>();
     public readonly List<NetworkObject> Monsters = new List<NetworkObject>();
+    public readonly HashSet<Stats> AffectedStats = new HashSet<Stats>();
 
     private readonly List<Health> _monsterHealths = new List<Health>();
 
@@ -35,7 +36,12 @@ public class CombatEncounter
             return null;
         }               
 
-        NetworkObject monster = Layout.Spawn(prefab, SpawnKind.Monster, spawnIndex);
+        int monsterLevel = Mathf.Max(0, GameManager.Instance.Floor - 1);
+        NetworkObject monster = Layout.Spawn(prefab, spawnIndex, spawnedMonster =>
+        {
+            if (spawnedMonster.TryGetComponent(out Stats stats))
+                stats.SetLevel(monsterLevel);
+        });
         if (monster == null) return null;
 
         if (!monster.TryGetComponent(out Health health))
@@ -43,13 +49,6 @@ public class CombatEncounter
             Debug.LogError($"[Combat] El monstruo {prefab.name} necesita Health.", prefab);
             monster.Despawn(true);
             return null;
-        }
-
-        if(monster.TryGetComponent<Stats>(out Stats monsterStats))
-        {
-            Debug.Log("levelAplied");
-            monsterStats.SetLevel(GameManager.Instance.Floor - 1);
-            Debug.Log(monsterStats.Level);
         }
 
         Monsters.Add(monster);
@@ -68,8 +67,14 @@ public class CombatEncounter
 
     public bool AllMonstersDead() => _monsterHealths.Count == 0;
 
+    public void RegisterCombatEffect(Stats stats)
+    {
+        if (stats != null) AffectedStats.Add(stats);
+    }
+
     public bool AllParticipantsDown()
     {
+        // Una caída individual no termina el encuentro: los participantes restantes pueden ganar.
         foreach (ulong id in Participants)
         {
             PlayerSoul soul = PlayerSoul.GetFor(id);

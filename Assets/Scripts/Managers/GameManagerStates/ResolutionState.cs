@@ -2,11 +2,11 @@
 public class ResolutionState : GameState
 {
     public ResolutionState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.ChoosingDoor, GamePhase.RestRoom, GamePhase.FinalDuel, GamePhase.GameOver);
 
     public override void Enter()
     {
-        // TODO 2B: victoria -> tesoros y niveles. Derrota -> d20, EscapeCondition y BadThing.
-        // TODO 2B: curar a los participantes vivos hasta el minimo de vida configurable.
+        _game.ServerApplyCombatResolution();
     }
 
     public override void Update()

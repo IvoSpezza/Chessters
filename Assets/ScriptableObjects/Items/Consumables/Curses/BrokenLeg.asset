@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CurseData
   _itemID: 501
   _itemName: BrokenLegCurse
-  _itemDescription: 'NOW YOU CANT MOVE AJJAJA
+  _itemDescription: 'NOW YOU Suffer
 
 '
   _itemIcon: {fileID: 0}
   _modifiers:
-  - Type: 1
+  - Type: 0
     Modifier: 0
-    Value: 0.5
+    Value: -20
     Id: 0

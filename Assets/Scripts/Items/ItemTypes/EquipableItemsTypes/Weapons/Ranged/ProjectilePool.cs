@@ -2,102 +2,108 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>
-/// Pool de proyectiles de red. Registra un INetworkPrefabInstanceHandler por prefab, asi que
-/// cuando un proyectil se despawnea NO se destruye: se desactiva y vuelve al pool.
-///
-/// Debe registrarse en TODOS los peers (servidor y clientes) antes de que se spawnee un proyectil.
-/// PlayerCombat lo hace al spawnear, leyendo los RangedData del ItemCatalog.
-/// </summary>
+/// <summary>Pool local del servidor para balas físicas. No registra prefabs en NGO.</summary>
 public static class ProjectilePool
 {
-    private static readonly Dictionary<GameObject, Pool> _pools = new Dictionary<GameObject, Pool>();
+    private static readonly Dictionary<GameObject, Pool> Pools = new Dictionary<GameObject, Pool>();
+    private static readonly Dictionary<Projectile, Pool> Owners = new Dictionary<Projectile, Pool>();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    private static void ResetStatics() => _pools.Clear();
+    private static void ResetStatics()
+    {
+        Pools.Clear();
+        Owners.Clear();
+    }
 
-    /// <summary>Registra el pool de proyectiles de cada arma a distancia del catalogo.</summary>
     public static void RegisterAll(ItemCatalog catalog)
-    {        
-        if (catalog == null) return;
+    {
+        NetworkManager manager = NetworkManager.Singleton;
+        if (catalog == null || manager == null || !manager.IsServer) return;
+
         foreach (ItemDataBase item in catalog.Weapons)
-        {
             if (item is RangedData ranged && ranged.projectilePrefab != null)
                 Register(ranged.projectilePrefab, ranged.prewarmCount);
-        }
     }
 
     public static void Register(GameObject prefab, int prewarmCount)
     {
-        NetworkManager nm = NetworkManager.Singleton;
-        if (nm == null || prefab == null) return;
-
-        if (!prefab.TryGetComponent(out NetworkObject _))
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
+        if (prefab == null || !prefab.TryGetComponent(out Projectile _))
         {
-            Debug.LogError($"[ProjectilePool] El prefab {prefab.name} no tiene NetworkObject.", prefab);
+            Debug.LogError($"[ProjectilePool] El prefab {prefab?.name} no tiene el script Projectile.", prefab);
             return;
         }
 
-        if (!_pools.TryGetValue(prefab, out Pool pool))
-        {
-            pool = new Pool(prefab);
-            _pools.Add(prefab, pool);
-            pool.Prewarm(prewarmCount);
-        }
-
-        
-        nm.PrefabHandler.AddHandler(prefab, pool);
-        
+        if (Pools.ContainsKey(prefab)) return;
+        Pool pool = new Pool(prefab);
+        Pools.Add(prefab, pool);
+        pool.Prewarm(prewarmCount);
     }
 
-    /// <summary>Solo servidor: saca un proyectil del pool (todavia sin spawnear en red).</summary>
-    public static NetworkObject Get(GameObject prefab, Vector3 position, Quaternion rotation)
+    public static Projectile Get(GameObject prefab, Vector3 position, Quaternion rotation)
     {
-        if (!_pools.ContainsKey(prefab)) Register(prefab, 0);
-        if (!_pools.TryGetValue(prefab, out Pool pool)) return null;
-
-        return pool.Instantiate(NetworkManager.ServerClientId, position, rotation);
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return null;
+        if (!Pools.ContainsKey(prefab)) Register(prefab, 0);
+        if (!Pools.TryGetValue(prefab, out Pool pool)) return null;
+        return pool.Get(position, rotation);
     }
 
-    // ------------------------------------------------------------------
+    public static void Return(Projectile projectile)
+    {
+        if (projectile == null) return;
+        if (Owners.TryGetValue(projectile, out Pool pool)) pool.Return(projectile);
+        else Object.Destroy(projectile.gameObject);
+    }
 
-    private class Pool : INetworkPrefabInstanceHandler
+    private sealed class Pool
     {
         private readonly GameObject _prefab;
-        private readonly Queue<NetworkObject> _available = new Queue<NetworkObject>();
+        private readonly Queue<Projectile> _available = new Queue<Projectile>();
 
         public Pool(GameObject prefab) => _prefab = prefab;
 
         public void Prewarm(int count)
         {
-            for (int i = 0; i < count; i++) _available.Enqueue(CreateInstance());
+            for (int i = 0; i < count; i++)
+            {
+                Projectile projectile = CreateInstance();
+                if (projectile != null) _available.Enqueue(projectile);
+            }
         }
 
-        private NetworkObject CreateInstance()
+        private Projectile CreateInstance()
         {
-            GameObject go = Object.Instantiate(_prefab);
-            Object.DontDestroyOnLoad(go);   
-            go.SetActive(false);
-            return go.GetComponent<NetworkObject>();
+            GameObject instance = Object.Instantiate(_prefab);
+            Object.DontDestroyOnLoad(instance);
+            Projectile projectile = instance.GetComponent<Projectile>();
+            if (projectile == null)
+            {
+                Object.Destroy(instance);
+                return null;
+            }
+
+            Owners[projectile] = this;
+            instance.SetActive(false);
+            return projectile;
         }
 
-        // NGO lo llama al spawnear (en el servidor lo llamamos nosotros via Get, en clientes lo llama NGO)
-        public NetworkObject Instantiate(ulong ownerClientId, Vector3 position, Quaternion rotation)
+        public Projectile Get(Vector3 position, Quaternion rotation)
         {
-            NetworkObject obj = null;
-            while (obj == null && _available.Count > 0) obj = _available.Dequeue();   
-            if (obj == null) obj = CreateInstance();
+            Projectile projectile = null;
+            while (projectile == null && _available.Count > 0) projectile = _available.Dequeue();
+            if (projectile == null) projectile = CreateInstance();
+            if (projectile == null) return null;
 
-            obj.transform.SetPositionAndRotation(position, rotation);
-            obj.gameObject.SetActive(true);
-            return obj;
+            projectile.transform.SetPositionAndRotation(position, rotation);
+            projectile.gameObject.SetActive(true);
+            return projectile;
         }
 
-        // NGO lo llama al despawnear con destroy = true: lo guardamos en vez de destruirlo
-        public void Destroy(NetworkObject networkObject)
+        public void Return(Projectile projectile)
         {
-            networkObject.gameObject.SetActive(false);
-            _available.Enqueue(networkObject);
+            projectile.ResetForPool();
+            projectile.gameObject.SetActive(false);
+            _available.Enqueue(projectile);
         }
     }
 }

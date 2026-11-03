@@ -2,6 +2,7 @@
 public class WaitingForBodiesState : GameState
 {
     public WaitingForBodiesState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.Preparation, GamePhase.ChoosingDoor);
 
     public override void Update()
     {
@@ -9,7 +10,7 @@ public class WaitingForBodiesState : GameState
 
         _game.ServerStartGame();   // reinicia el piso y reparte el loot
 
-        if (_game.PreparationSeconds > 0f) _game.ChangePhase(GamePhase.Preparation, _game.PreparationSeconds);
+        if (_game.PreparationSeconds > 0f) TransitionTo(GamePhase.Preparation, _game.PreparationSeconds);
         else _game.ServerBeginNextTurn();
     }
 }

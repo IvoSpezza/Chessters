@@ -21,8 +21,12 @@ public class LobbyDoor : NetworkBehaviour
     [SerializeField] private Button _startGameButton;
 
 
-    [Tooltip("Opcional: bot髇 que copia el c骴igo al portapapeles.")]
+    [Tooltip("Opcional: bot贸n que copia el c贸digo al portapapeles.")]
     [SerializeField] private Button _copyButton;   
+
+    [Header("Aparici贸n de jugadores")]
+    [Tooltip("Asign谩 aqu铆 los puntos de aparici贸n de la escena Lobby.")]
+    [SerializeField] private Transform[] _spawnPoints;
     
 
     private NetworkList<ulong> _ready;
@@ -45,8 +49,13 @@ public class LobbyDoor : NetworkBehaviour
 
     private void Start()
     {
+        if (_spawnPoints == null || _spawnPoints.Length == 0)
+            Debug.LogWarning("[LobbyDoor] Asign谩 al menos un punto de aparici贸n para los jugadores del Lobby.", this);
+        else if (SessionManager.instance != null && _spawnPoints.Length < SessionManager.instance.MaxPlayers)
+            Debug.LogWarning("[LobbyDoor] Hay menos puntos de aparici贸n que plazas; algunos jugadores compartir谩n posici贸n.", this);
+
         string code = SessionManager.instance != null ? SessionManager.instance.JoinCode : "";
-        if (_codeText != null) _codeText.text = string.IsNullOrEmpty(code) ? "" : $"C骴igo: {code}";
+        if (_codeText != null) _codeText.text = string.IsNullOrEmpty(code) ? "" : $"C贸digo: {code}";
 
         if (_copyButton != null)
         {
@@ -57,9 +66,15 @@ public class LobbyDoor : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        _startGameButton.enabled = false;
+        if (_startGameButton != null) _startGameButton.gameObject.SetActive(false);
         _ready.OnListChanged += HandleReadyChanged;
         if (_readyButton != null) _readyButton.onClick.AddListener(OnReadyClicked);
+
+        if (IsServer)
+        {
+            NetworkManager.OnClientConnectedCallback += HandleClientListChanged;
+            NetworkManager.OnClientDisconnectCallback += HandleClientDisconnected;
+        }
 
         _started = false;
         _localInside = false;
@@ -71,12 +86,28 @@ public class LobbyDoor : NetworkBehaviour
     {
         _ready.OnListChanged -= HandleReadyChanged;
         if (_readyButton != null) _readyButton.onClick.RemoveListener(OnReadyClicked);
+        if (NetworkManager != null && IsServer)
+        {
+            NetworkManager.OnClientConnectedCallback -= HandleClientListChanged;
+            NetworkManager.OnClientDisconnectCallback -= HandleClientDisconnected;
+        }
     }
 
     private void HandleReadyChanged(NetworkListEvent<ulong> changeEvent)
     {
         RefreshButton();
         RefreshText();
+        RefreshStartButton();
+    }
+
+    private void HandleClientListChanged(ulong _) => RefreshStartButton();
+
+    private void HandleClientDisconnected(ulong clientId)
+    {
+        _inside.Remove(clientId);
+        _ready.Remove(clientId);
+        RefreshText();
+        RefreshStartButton();
     }
 
     // ---------------------------------------------------------------- Triggers
@@ -106,6 +137,7 @@ public class LobbyDoor : NetworkBehaviour
         {
             _inside.Remove(body.OwnerClientId);
             _ready.Remove(body.OwnerClientId);            
+            RefreshStartButton();
         }
 
         if (body.IsOwner)
@@ -141,7 +173,10 @@ public class LobbyDoor : NetworkBehaviour
     private void RefreshText()
     {
         if (_readyCountText != null)
-            _readyCountText.text = $"Listos {_ready.Count}/{PlayerSoul.All.Count}";
+        {
+            int connectedPlayers = NetworkManager != null ? NetworkManager.ConnectedClientsIds.Count : 0;
+            _readyCountText.text = $"Listos {_ready.Count}/{connectedPlayers}";
+        }
     }
 
     // ---------------------------------------------------------------- Servidor
@@ -154,15 +189,44 @@ public class LobbyDoor : NetworkBehaviour
         // Solo vale si el servidor ya vio a ese jugador dentro de la zona
         if (!_inside.Contains(sender)) return;
         if (!_ready.Contains(sender)) _ready.Add(sender);
-        if(IsServer && PlayerSoul.All.Count == _ready.Count) _startGameButton.enabled = true;
+        RefreshStartButton();
     }      
 
     public void StartGame()
     {
+        if (!IsServer || _started) return;
         CleanUp();
-        if (PlayerSoul.All.Count != _ready.Count) return;
+        if (!CanStartGame()) return;
         _started = true;
         SessionManager.instance.StartGame();
+    }
+
+    private bool CanStartGame()
+    {
+        int playerCount = NetworkManager != null ? NetworkManager.ConnectedClientsIds.Count : 0;
+        int minPlayers = SessionManager.instance != null ? SessionManager.instance.MinPlayers : 2;
+        if (playerCount < minPlayers || _ready.Count != playerCount) return false;
+
+        foreach (ulong readyPlayer in _ready)
+            if (!_inside.Contains(readyPlayer)) return false;
+        return true;
+    }
+
+    private void RefreshStartButton()
+    {
+        if (_startGameButton == null) return;
+        bool canStart = IsServer && !_started && CanStartGame();
+        if (_startGameButton.gameObject.activeSelf != canStart)
+            _startGameButton.gameObject.SetActive(canStart);
+    }
+
+    public bool TryGetSpawnTransform(ulong clientId, out Transform spawnPoint)
+    {
+        spawnPoint = null;
+        if (_spawnPoints == null || _spawnPoints.Length == 0) return false;
+        int index = (int)(clientId % (ulong)_spawnPoints.Length);
+        spawnPoint = _spawnPoints[index];
+        return spawnPoint != null;
     }
 
     /// <summary>Unity no garantiza OnTriggerExit si el cuerpo se destruye o el cliente se desconecta dentro de la zona.</summary>

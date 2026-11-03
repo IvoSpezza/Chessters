@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -21,6 +22,7 @@ public class PlayerSoul : NetworkBehaviour
 
     /// <summary>Solo servidor: se dispara cuando un alma termina de spawnear.</summary>
     public static event Action<PlayerSoul> OnServerSoulSpawned;
+    public static event Action<string> OnChatMessageReceived;
 
     private readonly NetworkVariable<NetworkObjectReference> _body = new NetworkVariable<NetworkObjectReference>();
     private readonly NetworkVariable<bool> _isAlive = new NetworkVariable<bool>(true);
@@ -50,12 +52,21 @@ public class PlayerSoul : NetworkBehaviour
 
         if (IsServer)
         {
-            _playerName.Value = $"Jugador {OwnerClientId + 1}";
+            ServerSetName(null);
             _isAlive.Value = true;
             _level.Value = 1;
 
             OnServerSoulSpawned?.Invoke(this);
         }
+
+        if (IsOwner)
+        {
+            string requestedName = SessionManager.instance != null ? SessionManager.instance.LocalPlayerName : null;
+            if (IsServer) ServerSetName(requestedName);
+            else SetPlayerNameRpc(requestedName);
+        }
+
+        SyncBodyStatsLevel();
     }
 
     public override void OnNetworkDespawn()
@@ -72,11 +83,16 @@ public class PlayerSoul : NetworkBehaviour
     private void HandleBodyChanged(NetworkObjectReference previous, NetworkObjectReference current)
     {
         current.TryGet(out NetworkObject body);
+        SyncBodyStatsLevel(body);
         OnBodyChanged?.Invoke(body);
     }
 
     private void HandleAliveChanged(bool previous, bool current) => OnAliveChanged?.Invoke(current);
-    private void HandleLevelChanged(int previous, int current) => OnLevelChanged?.Invoke(current);
+    private void HandleLevelChanged(int previous, int current)
+    {
+        SyncBodyStatsLevel();
+        OnLevelChanged?.Invoke(current);
+    }
     private void HandleNameChanged(FixedString32Bytes previous, FixedString32Bytes current) => OnNameChanged?.Invoke(current.ToString());
 
     // ---------------------------------------------------------------- Cuerpo
@@ -95,7 +111,20 @@ public class PlayerSoul : NetworkBehaviour
     /// <summary>Busca el alma de un cliente (null si no existe).</summary>
     public static PlayerSoul GetFor(ulong clientId)
     {
-        NetworkObject obj = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(clientId);
+        NetworkManager manager = NetworkManager.Singleton;
+        if (manager == null) return null;
+
+        // GetPlayerNetworkObject is server-only for remote clients. Clients already
+        // have their locally spawned PlayerSoul instances in All, so resolve there.
+        if (!manager.IsServer)
+        {
+            for (int i = 0; i < All.Count; i++)
+                if (All[i] != null && All[i].OwnerClientId == clientId)
+                    return All[i];
+            return null;
+        }
+
+        NetworkObject obj = manager.SpawnManager.GetPlayerNetworkObject(clientId);
         return obj != null ? obj.GetComponent<PlayerSoul>() : null;
     }
 
@@ -105,6 +134,7 @@ public class PlayerSoul : NetworkBehaviour
     {
         if (!IsServer) return;
         _body.Value = new NetworkObjectReference(body);
+        SyncBodyStatsLevel(body);
     }
 
     public void ServerClearBody()
@@ -123,11 +153,81 @@ public class PlayerSoul : NetworkBehaviour
     {
         if (!IsServer) return;
         _level.Value = Mathf.Max(1, level);
+        SyncBodyStatsLevel();
+    }
+
+    private void SyncBodyStatsLevel(NetworkObject body = null)
+    {
+        if (body == null && !_body.Value.TryGet(out body)) return;
+        if (body != null && body.TryGetComponent(out Stats stats)) stats.SetLevel(_level.Value);
     }
 
     public void ServerSetName(string playerName)
     {
         if (!IsServer) return;
-        _playerName.Value = playerName;   // se recorta a 32 bytes
+
+        string normalizedName = (playerName ?? string.Empty).Trim();
+        normalizedName = normalizedName.Replace("\n", string.Empty).Replace("\r", string.Empty);
+        if (string.IsNullOrWhiteSpace(normalizedName)) normalizedName = $"Jugador {OwnerClientId + 1}";
+
+        // FixedString32Bytes reserva 29 bytes UTF-8 para contenido.
+        while (normalizedName.Length > 0 && Encoding.UTF8.GetByteCount(normalizedName) > 29)
+        {
+            int trimIndex = normalizedName.Length - 1;
+            if (char.IsLowSurrogate(normalizedName[trimIndex]) && trimIndex > 0 && char.IsHighSurrogate(normalizedName[trimIndex - 1]))
+                trimIndex--;
+            normalizedName = normalizedName.Substring(0, trimIndex);
+        }
+
+        _playerName.Value = normalizedName;
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SetPlayerNameRpc(string playerName, RpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId != OwnerClientId) return;
+        ServerSetName(playerName);
+    }
+
+    /// <summary>Envía un mensaje desde el jugador propietario al servidor.</summary>
+    public void SendChatMessage(string message)
+    {
+        if (!IsSpawned || string.IsNullOrWhiteSpace(message)) return;
+        string cleanMessage = message.Trim();
+        if (cleanMessage.Length > 200) cleanMessage = cleanMessage.Substring(0, 200);
+
+        if (IsServer) ServerBroadcastChatMessage(cleanMessage);
+        else SendChatMessageRpc(cleanMessage);
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SendChatMessageRpc(string message, RpcParams rpcParams = default)
+    {
+        if (rpcParams.Receive.SenderClientId != OwnerClientId || !IsServer) return;
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        string cleanMessage = message.Trim();
+        if (cleanMessage.Length > 200) cleanMessage = cleanMessage.Substring(0, 200);
+        ServerBroadcastChatMessage(cleanMessage);
+    }
+
+    private void ServerBroadcastChatMessage(string message)
+    {
+        if (!IsServer) return;
+        string safeName = PlayerName;
+        if (string.IsNullOrWhiteSpace(safeName)) safeName = $"Jugador {OwnerClientId + 1}";
+        string formattedMessage = $"{safeName}: {message}";
+
+        // Emitir desde el PlayerSoul del host asegura que el servidor sea el emisor
+        // autorizado del RPC de difusión, aunque el mensaje haya llegado desde un cliente.
+        PlayerSoul hostSoul = GetFor(NetworkManager.ServerClientId);
+        if (hostSoul != null) hostSoul.BroadcastChatMessageRpc(formattedMessage);
+        else BroadcastChatMessageRpc(formattedMessage);
+    }
+
+    [Rpc(SendTo.Everyone)]
+    private void BroadcastChatMessageRpc(string formattedMessage)
+    {
+        OnChatMessageReceived?.Invoke(formattedMessage);
     }
 }

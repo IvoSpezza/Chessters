@@ -5,6 +5,8 @@
 public class EnteringRoomState : GameState
 {
     public EnteringRoomState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.CombatPlanning, GamePhase.ChestDecision,
+        GamePhase.ChoosingDoor, GamePhase.RestRoom, GamePhase.FinalDuel, GamePhase.GameOver);
 
     public override void Update()
     {
@@ -12,7 +14,7 @@ public class EnteringRoomState : GameState
 
         _game.ServerDespawnPreviousRoom();
 
-        if (_game.CurrentRoomType == RoomType.Treasure) _game.ChangePhase(GamePhase.ChestDecision, _game.ChestDecisionSeconds);
-        else _game.ChangePhase(GamePhase.CombatPlanning, _game.PlanningSeconds);
+        if (_game.CurrentRoomType == RoomType.Treasure) TransitionTo(GamePhase.ChestDecision, _game.ChestDecisionSeconds);
+        else TransitionTo(GamePhase.CombatPlanning, _game.PlanningSeconds);
     }
 }

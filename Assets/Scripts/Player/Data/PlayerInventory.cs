@@ -33,7 +33,7 @@ public class PlayerInventory : NetworkBehaviour
 
     [SerializeField] private ItemCatalog _catalog;
 
-    [Header("DEBUG - IDs que recibe la mochila al spawnear (solo servidor)")]
+    [Header("Items garantizados al aparecer (solo servidor)")]
     [SerializeField] private int[] _startingBackpackIds;
 
     private NetworkList<int> _equipped;     // indexado por EquipSlot
@@ -64,6 +64,8 @@ public class PlayerInventory : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         _stats = GetComponent<Stats>();
+        PlayerSoul soul = PlayerSoul.GetFor(OwnerClientId);
+        if (soul != null) _stats.SetLevel(soul.Level);
 
         _equipped.OnListChanged += HandleEquipmentListChanged;
         _accessories.OnListChanged += HandleEquipmentListChanged;
@@ -74,7 +76,7 @@ public class PlayerInventory : NetworkBehaviour
             if (_equipped.Count == 0)
                 for (int i = 0; i < SlotCount; i++) _equipped.Add(EmptyID);
 
-            foreach (int id in _startingBackpackIds) AddItem(id);
+            ServerGrantStartingItems();
         }
         if (IsOwner && UiInventoryManager.Instance != null) UiInventoryManager.Instance.SetUpInv(this,_stats);
 
@@ -188,13 +190,36 @@ public class PlayerInventory : NetworkBehaviour
     // ---------------------------------------------------------------- Solo servidor (loot, donacion, trade, muerte)
 
     /// <summary>TODO: conectar con la fase de turno del DungeonManager (no equipar en planificacion/combate).</summary>
-    public bool CanModifyEquipment() => GameManager.Instance == null || GameManager.Instance.CanModifyEquipment;
+    public bool CanModifyEquipment()
+    {
+        PlayerSoul soul = PlayerSoul.GetFor(OwnerClientId);
+        return (soul == null || soul.IsAlive) &&
+               (GameManager.Instance == null || GameManager.Instance.CanModifyEquipment);
+    }
+
+    /// <summary>Elimina mochila, equipo y accesorios al morir. Solo puede llamarlo el servidor.</summary>
+    public void ServerClearAllItems()
+    {
+        if (!IsServer) return;
+        _backpack.Clear();
+        for (int i = 0; i < _equipped.Count; i++) _equipped[i] = EmptyID;
+        _accessories.Clear();
+    }
+
+    /// <summary>Vuelve a entregar los objetos configurados como equipo inicial, incluido el arma garantizada.</summary>
+    public void ServerGrantStartingItems()
+    {
+        if (!IsServer) return;
+        foreach (int id in _startingBackpackIds) AddItem(id);
+    }
 
     public bool AddItem(ItemDataBase item) => item != null && AddItem(item.itemID);
 
     public bool AddItem(int itemId)
     {
         if (!IsServer) return false;
+        PlayerSoul soul = PlayerSoul.GetFor(OwnerClientId);
+        if (soul != null && !soul.IsAlive) return false;
         if (!_catalog.TryGetItem(itemId, out ItemDataBase _))
         {
             Debug.LogWarning($"[PlayerInventory] AddItem: ID {itemId} no existe en el catalogo");

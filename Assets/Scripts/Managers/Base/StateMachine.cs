@@ -21,11 +21,22 @@ public class StateMachine
     public void AddState(State state, Enum key)
     {
         _states.Add(key, state);
+        if (state is GameState gameState) gameState.Attach(this);
     }
-    public void ChangeState(Enum key)
+
+    public bool CanChangeState(Enum key)
+    {
+        if (!_states.TryGetValue(key, out State next)) return false;
+        if (_currentState == null) return Equals(key, GamePhase.WaitingForBodies);
+        return _currentState is GameState current && key is GamePhase phase && current.CanTransitionTo(phase);
+    }
+
+    public bool ChangeState(Enum key)
     {        
+        if (!CanChangeState(key)) return false;
         _currentState?.Exit();
         _currentState = _states[key];
         _currentState?.Enter();
+        return true;
     }
 }

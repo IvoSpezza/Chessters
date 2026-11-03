@@ -38,6 +38,6 @@ public abstract class BaseCombatData : ScriptableObject
 
     public abstract bool IsVictory(CombatEncounter encounter);
 
-    /// <summary>Por defecto se pierde cuando todos los participantes quedan sin vida.</summary>
+    /// <summary>La derrota ocurre cuando todos los participantes del combate quedan sin vida.</summary>
     public virtual bool IsDefeat(CombatEncounter encounter) => encounter.AllParticipantsDown();
 }

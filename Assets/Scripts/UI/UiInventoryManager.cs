@@ -129,7 +129,7 @@ public class UiInventoryManager : MonoBehaviour
         BuildList(_backpack, _inventory.GetBackpack(), OnBackpackItemClicked);
     }
 
-    // Destruye y recrea los items del contenedor (sin pooling, la mochila es chica)
+    // Destruye y recrea los items del contenedor 
     private void BuildList(RectTransform container, List<ItemDataBase> items, System.Action<Ui_ItemInInv> onClick)
     {
         if (container == null || _uiItemPrefab == null) return;
@@ -158,7 +158,7 @@ public class UiInventoryManager : MonoBehaviour
         for (int i = container.childCount - 1; i >= 0; i--)
         {
             GameObject child = container.GetChild(i).gameObject;
-            child.SetActive(false);   // Destroy es diferido: lo ocultamos para que el layout no lo cuente
+            child.SetActive(false);   
             Destroy(child);
         }
     }

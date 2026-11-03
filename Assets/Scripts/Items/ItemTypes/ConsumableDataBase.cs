@@ -3,7 +3,8 @@ public enum ConsumableType
     Potion,
     TepmModifier,
     Spawn,
-    Curse
+    Curse,
+    CombatModifier
 }
 
 public abstract class ConsumableDataBase : ItemDataBase

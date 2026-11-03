@@ -5,6 +5,7 @@
 public class CombatPlanningState : GameState
 {
     public CombatPlanningState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.CombatCountdown, GamePhase.Combat, GamePhase.ChoosingDoor, GamePhase.RestRoom, GamePhase.FinalDuel, GamePhase.GameOver);
 
     public override void Update()
     {

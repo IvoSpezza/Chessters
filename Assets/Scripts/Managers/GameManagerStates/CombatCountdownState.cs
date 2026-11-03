@@ -2,9 +2,10 @@
 public class CombatCountdownState : GameState
 {
     public CombatCountdownState(GameManager game) : base(game) { }
+    public override bool CanTransitionTo(GamePhase next) => Allows(next, GamePhase.Combat, GamePhase.ChoosingDoor, GamePhase.RestRoom, GamePhase.FinalDuel, GamePhase.GameOver);
 
     public override void Update()
     {
-        if (_game.PhaseTimeUp) _game.ChangePhase(GamePhase.Combat);
+        if (_game.PhaseTimeUp) TransitionTo(GamePhase.Combat);
     }
 }

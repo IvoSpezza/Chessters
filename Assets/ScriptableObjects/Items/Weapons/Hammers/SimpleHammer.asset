@@ -15,11 +15,13 @@ MonoBehaviour:
   _itemID: 102
   _itemName: SimpleHammer
   _itemDescription: Just a test hammer
-  _itemIcon: {fileID: 0}
+  _itemIcon: {fileID: 21300000, guid: 37e00e438a06fd94fbd1469fcc112b6b, type: 3}
   _modifiers: []
   _handsRequired: 1
-  _finalDamage: 1
-  _finalAttackSpeed: 0.4
+  _finalDamage: 1.3
+  _finalAttackSpeed: 0.65
+  _visualDuration: 0.22
+  _impactFraction: 0.65
   _visualPrefab: {fileID: 8033779315191490384, guid: 9f88b5ac597e16442ad9871e05146c36, type: 3}
-  _impactRadius: 1.5
+  _impactRadius: 1.8
   _impactDistance: 2

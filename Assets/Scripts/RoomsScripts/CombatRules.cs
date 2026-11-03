@@ -15,7 +15,7 @@ public enum EscapeComparison
     LessThan
 }
 
-/// <summary>Castigo por perder un combate. Se aplica si el d20 no cumple la EscapeCondition. TODO 2B: aplicarlo.</summary>
+/// <summary>Castigo por perder un combate. Se aplica si el d20 no cumple la EscapeCondition.</summary>
 [Serializable]
 public class BadThing
 {

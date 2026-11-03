@@ -6,9 +6,11 @@ public class UiManagerServerMenu : MonoBehaviour
 {
     [SerializeField] private Button hostButton;
     [SerializeField] private Button joinButton;
-    [Tooltip("Con Relay es el campo del c�digo de sala. Sin Relay, la IP.")]
+    [Tooltip("Solo se usa con Relay. En modo de prueba local se conecta automáticamente a localhost.")]
     [SerializeField] private TMP_InputField ipInput;
-    [Tooltip("Opcional: texto donde se muestran los errores de conexi�n.")]
+    [Tooltip("Nombre que se mostrará sobre el personaje durante la partida.")]
+    [SerializeField] private TMP_InputField playerNameInput;
+    [Tooltip("Opcional: texto donde se muestran los errores de conexión.")]
     [SerializeField] private TMP_Text errorText;
 
     private void Start()
@@ -17,6 +19,17 @@ public class UiManagerServerMenu : MonoBehaviour
         joinButton.onClick.AddListener(OnJoinClicked);
 
         if (errorText != null) errorText.text = "";
+        bool useRelay = SessionManager.instance == null || SessionManager.instance.UsesRelay;
+        if (ipInput != null && ipInput.placeholder is TMP_Text placeholder)
+            placeholder.text = "Código de sala";
+        if (playerNameInput == null && ipInput != null)
+            CreatePlayerNameInput();
+        if (SessionManager.instance != null && playerNameInput != null)
+        {
+            playerNameInput.characterLimit = 24;
+            playerNameInput.text = SessionManager.instance.LocalPlayerName;
+        }
+        if (ipInput != null) ipInput.gameObject.SetActive(useRelay);
         SessionManager.instance.OnConnectionError += ShowError;
     }
 
@@ -32,13 +45,34 @@ public class UiManagerServerMenu : MonoBehaviour
     private void OnHostClicked()
     {
         ClearError();
+        SavePlayerName();
         SessionManager.instance.StartHost();
     }
 
     private void OnJoinClicked()
     {
         ClearError();
-        SessionManager.instance.StartClient(ipInput.text);
+        SavePlayerName();
+        SessionManager.instance.StartClient(SessionManager.instance.UsesRelay ? ipInput.text : null);
+    }
+
+    private void CreatePlayerNameInput()
+    {
+        GameObject inputObject = Instantiate(ipInput.gameObject, ipInput.transform.parent);
+        inputObject.name = "Player Name Input";
+        playerNameInput = inputObject.GetComponent<TMP_InputField>();
+        playerNameInput.text = "";
+        playerNameInput.characterLimit = 24;
+        RectTransform inputRect = inputObject.GetComponent<RectTransform>();
+        inputRect.anchoredPosition += new Vector2(0f, -38f);
+        TMP_Text placeholder = playerNameInput.placeholder as TMP_Text;
+        if (placeholder != null) placeholder.text = "Nombre del jugador";
+    }
+
+    private void SavePlayerName()
+    {
+        if (SessionManager.instance == null) return;
+        SessionManager.instance.SetLocalPlayerName(playerNameInput != null ? playerNameInput.text : "");
     }
 
     private void ShowError(string message)

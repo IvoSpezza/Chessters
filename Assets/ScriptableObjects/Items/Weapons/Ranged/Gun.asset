@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc95323e5924164981f865cd6c688d8, type: 3}
+  m_Name: Gun
+  m_EditorClassIdentifier: Assembly-CSharp::RangedData
+  _itemID: 109
+  _itemName: Gun
+  _itemDescription: Why Not
+  _itemIcon: {fileID: 0}
+  _modifiers: []
+  _handsRequired: 1
+  _finalDamage: 0.25
+  _finalAttackSpeed: 3
+  _visualDuration: 0.04
+  _impactFraction: 0
+  _visualPrefab: {fileID: 4697428214631733743, guid: 808d12ee6100edd4ea9a2da5d475cfbe, type: 3}
+  _projectilePrefab: {fileID: 8529188729954956373, guid: bff0db172552d2344927ddf676c9781d, type: 3}
+  _projectileSpeed: 18
+  _projectileLifetime: 1.8
+  _proyectileSpawnDistance: 0.08
+  _preWarmCount: 10
+  _obstacleMask:
+    serializedVersion: 2
+    m_Bits: 8

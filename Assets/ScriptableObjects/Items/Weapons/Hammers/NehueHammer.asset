@@ -15,17 +15,17 @@ MonoBehaviour:
   _itemID: 106
   _itemName: NehureHammer
   _itemDescription: ES rojo y ES negro, es RedCrossbones
-  _itemIcon: {fileID: 0}
+  _itemIcon: {fileID: 21300000, guid: 37e00e438a06fd94fbd1469fcc112b6b, type: 3}
   _modifiers:
   - Type: 2
     Modifier: 1
-    Value: 2
+    Value: 0.25
     Id: 0
   _handsRequired: 2
-  _finalDamage: 2.02
-  _finalAttackSpeed: 3.04
-  _visualDuration: 0.2
-  _impactFraction: 0.1
+  _finalDamage: 1.4
+  _finalAttackSpeed: 0.65
+  _visualDuration: 0.3
+  _impactFraction: 0.65
   _visualPrefab: {fileID: 8332659778736743466, guid: 345690d81ee155e4a9a4f6f037d29766, type: 3}
-  _impactRadius: 6
-  _impactDistance: 3
+  _impactRadius: 2.5
+  _impactDistance: 2.5

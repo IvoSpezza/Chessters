@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e50ee92dce5249f4b82d7f4a17ff362a, type: 3}
   m_Name: SimpleTeasureRoom
   m_EditorClassIdentifier: Assembly-CSharp::TreasureRoomData
-  _roomID: 102
+  _roomID: 201
   _roomName: SimpleTeasureRoom
   _roomPrefab: {fileID: 3645618417913605213, guid: 779cb7c42e4304246a0857dd6b06abb5, type: 3}
   _chestPrefab: {fileID: 1557680611249166396, guid: 54aeb07e27ffca746ab3fb6457d9a9c8, type: 3}

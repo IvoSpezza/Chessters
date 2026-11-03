@@ -9,14 +9,23 @@ public class UiHealth : MonoBehaviour
 
     public void SetUpHealth(Health playerHealth)
     {
+        SetUpHealth(playerHealth, _health);
+    }
+
+    /// <summary>Conecta esta barra con la vida indicada y permite asignar la imagen en runtime.</summary>
+    public void SetUpHealth(Health playerHealth, Image healthImage)
+    {
         ClearHealth();
+        _health = healthImage;
         _healthValue = playerHealth;
+        if (_healthValue == null || _health == null) return;
         _healthValue.OnHealthChanged += ActualizeHealth;
+        ActualizeHealth(_healthValue.CurrentHealth, _healthValue.MaxHealth);
       
     }
     private void ActualizeHealth(float actualHealth, float maxHealth)
     {
-        if (_healthValue == null) return;
+        if (_healthValue == null || _health == null) return;
         Vector3 actualScale = _health.rectTransform.localScale;
         actualScale.x = actualHealth > 0 ? Mathf.Clamp01(actualHealth / maxHealth) : 0f;
         _health.rectTransform.localScale = actualScale;

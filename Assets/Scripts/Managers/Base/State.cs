@@ -22,9 +22,28 @@ public abstract class State
 public abstract class GameState : State
 {
     protected readonly GameManager _game;
+    protected StateMachine _machine;
 
     protected GameState(GameManager game)
     {
         _game = game;
+    }
+
+    internal void Attach(StateMachine machine) => _machine = machine;
+
+    /// <summary>Declara las fases a las que este estado puede ceder el control.</summary>
+    public virtual bool CanTransitionTo(GamePhase next) => false;
+
+    protected static bool Allows(GamePhase next, params GamePhase[] allowed)
+    {
+        foreach (GamePhase phase in allowed)
+            if (phase == next) return true;
+        return false;
+    }
+
+    protected bool TransitionTo(GamePhase next, float seconds = 0f)
+    {
+        if (_machine == null || !_machine.CanChangeState(next)) return false;
+        return _game.ChangePhase(next, seconds);
     }
 }

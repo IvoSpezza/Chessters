@@ -5,6 +5,8 @@ using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
 using Unity.Services.Core;
+using Unity.Services.Lobbies;
+using Unity.Services.Lobbies.Models;
 using Unity.Services.Relay;
 using Unity.Services.Relay.Models;
 using UnityEngine;
@@ -19,17 +21,18 @@ public class SessionManager : MonoBehaviour
     }
     public static SessionManager instance { get; private set; }
 
-    [Header("Red")]
-    [SerializeField] private string ipAddress = "127.0.0.1";
-    [SerializeField] private ushort port = 7777;
     [SerializeField] private int maxPlayers = 6;
+    [SerializeField, Min(2)] private int minPlayers = 2;
+        
+    [Header("Red")]
+    [Tooltip("Activado: Relay. Desactivado: modo de prueba local; host y clientes usan localhost en esta m√°quina.")]
+    [SerializeField] private bool useRelay = true;
+    private const ushort DirectTestPort = 7777;
 
     [Header("Relay")]
-    [Tooltip("Si est· tildado se usa Unity Relay con join code. Si no, conexiÛn directa por IP.")]
-    [SerializeField] private bool useRelay = true;
     [Tooltip("dtls = cifrado (recomendado). udp = sin cifrar.")]
     [SerializeField] private Cifration _connectionTypeEnum = Cifration.dtls;
-    [Tooltip("Opcional: perfil de autenticaciÛn. ⁄til si dos instancias locales comparten el mismo Player ID.")]
+    [Tooltip("Opcional: perfil de autenticaci√≥n. √ötil si dos instancias locales comparten el mismo Player ID.")]
     [SerializeField] private string authProfile = "";
 
     [Header("Escenas")]
@@ -46,9 +49,20 @@ public class SessionManager : MonoBehaviour
     private SessionState _state = SessionState.Menu;
     private bool _sceneReady;   
     private bool _connecting;   
+    private string _lobbyId = "";
+    private string _relayJoinCode = "";
+    private bool _isLobbyHost;
+    private Coroutine _heartbeatCoroutine;
+    private bool _cleaningLobby;
+    private const string RelayCodeKey = "relayJoinCode";
+    private const string LobbyStateKey = "gameState";
 
-    /// <summary>Join code de la sesion actual (vacio si se usa IP directa o no hay sesion).</summary>
+    /// <summary>C√≥digo de Unity Lobby para compartir con los dem√°s jugadores.</summary>
     public string JoinCode { get; private set; } = "";
+    public string LocalPlayerName { get; private set; } = "";
+    public int MinPlayers => minPlayers;
+    public int MaxPlayers => maxPlayers;
+    public bool UsesRelay => useRelay;
 
     /// <summary>Se dispara cuando falla el inicio de host o cliente. La UI muestra el mensaje.</summary>
     public event Action<string> OnConnectionError;
@@ -60,6 +74,7 @@ public class SessionManager : MonoBehaviour
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
         _connectionType = _connectionTypeEnum.Equals(Cifration.dtls) ? "dtls" : "udp";
+        LocalPlayerName = PlayerPrefs.GetString("Chessters.PlayerName", "");
         DontDestroyOnLoad(gameObject);
     }
 
@@ -78,10 +93,11 @@ public class SessionManager : MonoBehaviour
         Net.OnServerStopped -= OnServerStopped;
         Net.OnClientDisconnectCallback -= OnClientDisconnected;
         Net.ConnectionApprovalCallback -= OnConnectionApproval;
+        if (_heartbeatCoroutine != null) StopCoroutine(_heartbeatCoroutine);
     }
 
     // ---------- API para la UI ----------
-    public async void StartHost(string address = null)
+    public async void StartHost()
     {
         if (_connecting || Net.IsListening) return;
         _connecting = true;
@@ -92,24 +108,46 @@ public class SessionManager : MonoBehaviour
             {
                 await InitServicesAsync();
 
-                // El host no cuenta como conexion de Relay: maxPlayers - 1
                 Allocation allocation = await RelayService.Instance.CreateAllocationAsync(maxPlayers - 1);
-                JoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+                _relayJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+                Net.GetComponent<UnityTransport>().SetRelayServerData(
+                    AllocationUtils.ToRelayServerData(allocation, _connectionType));
 
-                var utp = Net.GetComponent<UnityTransport>();
-                utp.SetRelayServerData(AllocationUtils.ToRelayServerData(allocation, _connectionType));
-                Debug.Log($"[Relay] Host listo. Join code: {JoinCode}");
+                var hostPlayer = new Player(
+                    id: AuthenticationService.Instance.PlayerId,
+                    allocationId: allocation.AllocationId.ToString(),
+                    profile: new PlayerProfile(LocalPlayerName));
+                var lobbyOptions = new CreateLobbyOptions
+                {
+                    IsPrivate = true,
+                    IsLocked = false,
+                    Player = hostPlayer,
+                    Data = new Dictionary<string, DataObject>
+                    {
+                        { RelayCodeKey, new DataObject(DataObject.VisibilityOptions.Member, _relayJoinCode) },
+                        { LobbyStateKey, new DataObject(DataObject.VisibilityOptions.Public, "Waiting") }
+                    }
+                };
+                Lobby lobby = await LobbyService.Instance.CreateLobbyAsync("Chesters", maxPlayers, lobbyOptions);
+                SetLobby(lobby, isHost: true);
             }
             else
             {
-                SetConnectionData(address);
+                SetConnectionData();
             }
 
-            if (!Net.StartHost()) Fail("No se pudo iniciar el host.");
+            if (!Net.StartHost())
+            {
+                Fail("No se pudo iniciar el host.");
+                _ = LeaveLobbyAsync(deleteLobby: true);
+            }
         }
         catch (Exception e)
         {
-            Fail("No se pudo crear la sala. Revis· tu conexiÛn a internet.", e);
+            Fail(useRelay
+                ? "No se pudo crear la sala. Revis√° la configuraci√≥n de Unity Services y Relay."
+                : "No se pudo iniciar el host con conexi√≥n directa. Revis√° la configuraci√≥n de red.", e);
+            _ = LeaveLobbyAsync(deleteLobby: true);
         }
         finally
         {
@@ -117,45 +155,70 @@ public class SessionManager : MonoBehaviour
         }
     }
 
-    /// <summary>Con Relay, "address" es el join code. Sin Relay, es la IP.</summary>
-    public async void StartClient(string address)
+    /// <summary>Con Relay recibe un c√≥digo de sala; sin Relay se conecta a localhost para pruebas.</summary>
+    public async void StartClient(string address = null)
     {
         if (_connecting || Net.IsListening) return;
         _connecting = true;
 
         try
         {
+            string target = (address ?? "").Trim();
+            if (useRelay && string.IsNullOrEmpty(target))
+            {
+                Fail("Ingres√° el c√≥digo de la sala.");
+                return;
+            }
+
             if (useRelay)
             {
-                string code = (address ?? "").Trim().ToUpperInvariant();
-                if (string.IsNullOrEmpty(code))
-                {
-                    Fail("Ingres· el cÛdigo de la sala.");
-                    return;
-                }
-
+                string code = target.ToUpperInvariant();
                 await InitServicesAsync();
+                var joiningPlayer = new Player(
+                    id: AuthenticationService.Instance.PlayerId,
+                    profile: new PlayerProfile(LocalPlayerName));
+                Lobby lobby = await LobbyService.Instance.JoinLobbyByCodeAsync(code,
+                    new JoinLobbyByCodeOptions { Player = joiningPlayer });
+                SetLobby(lobby, isHost: false);
 
-                JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(code);
-                var utp = Net.GetComponent<UnityTransport>();
-                utp.SetRelayServerData(AllocationUtils.ToRelayServerData(joinAllocation, _connectionType));
-                JoinCode = code;
-                Debug.Log($"[Relay] Unido con el cÛdigo {code}");
+                if (lobby.Data == null || !lobby.Data.TryGetValue(RelayCodeKey, out DataObject relayData) ||
+                    string.IsNullOrWhiteSpace(relayData.Value))
+                    throw new InvalidOperationException("La sala no tiene datos de conexi√≥n de Relay.");
+
+                _relayJoinCode = relayData.Value;
+                JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(_relayJoinCode);
+                Net.GetComponent<UnityTransport>().SetRelayServerData(
+                    AllocationUtils.ToRelayServerData(joinAllocation, _connectionType));
+                await LobbyService.Instance.UpdatePlayerAsync(_lobbyId, AuthenticationService.Instance.PlayerId,
+                    new UpdatePlayerOptions { AllocationId = joinAllocation.AllocationId.ToString() });
             }
             else
             {
-                SetConnectionData(address);
+                SetConnectionData();
             }
 
-            if (!Net.StartClient()) Fail("No se pudo iniciar el cliente.");
+            if (!Net.StartClient())
+            {
+                Fail("No se pudo iniciar el cliente.");
+                _ = LeaveLobbyAsync(deleteLobby: false);
+            }
+        }
+        catch (LobbyServiceException e)
+        {
+            Fail("C√≥digo de Lobby inv√°lido, sala llena o sala no disponible.", e);
+            _ = LeaveLobbyAsync(deleteLobby: false);
         }
         catch (RelayServiceException e)
         {
-            Fail("CÛdigo inv·lido o sala no disponible.", e);
+            Fail("No se pudo conectar a Relay desde esta sala.", e);
+            _ = LeaveLobbyAsync(deleteLobby: false);
         }
         catch (Exception e)
         {
-            Fail("No se pudo conectar. Revis· tu conexiÛn a internet.", e);
+            Fail(useRelay
+                ? "No se pudo conectar a la sala. Revis√° tu conexi√≥n a internet."
+                : "No se pudo conectar al host local. Confirm√° que haya una instancia host activa.", e);
+            _ = LeaveLobbyAsync(deleteLobby: false);
         }
         finally
         {
@@ -168,15 +231,28 @@ public class SessionManager : MonoBehaviour
         if (!Net.IsServer || _state != SessionState.Lobby) return;
         _state = SessionState.InGame;
         _sceneReady = false;
+        _ = UpdateLobbyGameStateAsync("InGame", isLocked: true);
         Net.SceneManager.LoadScene(gameScene, LoadSceneMode.Single);
     }
 
-    private void SetConnectionData(string address)
+    /// <summary>Devuelve a todos los clientes conectados al lobby al terminar la partida.</summary>
+    public void ServerReturnToLobby()
     {
-        var utp = Net.GetComponent<UnityTransport>();
-        utp.SetConnectionData(string.IsNullOrWhiteSpace(address) ? ipAddress : address, port);
+        if (Net == null || !Net.IsServer || _state != SessionState.InGame) return;
+
+        _state = SessionState.Lobby;
+        _sceneReady = false;
+        _ = UpdateLobbyGameStateAsync("Waiting", isLocked: false);
+        Net.SceneManager.LoadScene(lobbyScene, LoadSceneMode.Single);
     }
 
+    public void SetLocalPlayerName(string playerName)
+    {
+        LocalPlayerName = (playerName ?? string.Empty).Trim();
+        if (LocalPlayerName.Length > 24) LocalPlayerName = LocalPlayerName.Substring(0, 24);
+        PlayerPrefs.SetString("Chessters.PlayerName", LocalPlayerName);
+        PlayerPrefs.Save();
+    }
     // ---------- Servicios de Unity (Relay) ----------
     // Se inicializa una sola vez y se reutiliza (la sesion anonima queda abierta).
     private async Task InitServicesAsync()
@@ -213,17 +289,19 @@ public class SessionManager : MonoBehaviour
         Net.SceneManager.LoadScene(lobbyScene, LoadSceneMode.Single);
     }
 
-    private void OnServerStopped(bool _)
+    private void OnServerStopped(bool shutdown)
     {
         _state = SessionState.Menu;
         _sceneReady = false;
         JoinCode = "";
+        if (_heartbeatCoroutine != null) StopCoroutine(_heartbeatCoroutine);
         PlayerSoul.OnServerSoulSpawned -= OnSoulSpawned;
         if (Net.SceneManager != null)
         {
             Net.SceneManager.OnLoadEventCompleted -= OnSceneLoadCompleted;
             Net.SceneManager.OnSynchronizeComplete -= OnClientSynchronized;
         }
+        if (_isLobbyHost) _ = LeaveLobbyAsync(deleteLobby: true);
         SceneManager.LoadScene(menuScene);
     }
 
@@ -237,7 +315,7 @@ public class SessionManager : MonoBehaviour
         response.CreatePlayerObject = true;             // NGO crea el ALMA (Default Player Prefab)
         Debug.Log($"[Approval] cliente={request.ClientNetworkId} estado={_state} prefabDelAlma={(Net.NetworkConfig.PlayerPrefab != null)}");
         if (!response.Approved)
-            response.Reason = !open ? "La partida ya empezÛ" : "Sala llena";
+            response.Reason = !open ? "La partida ya empez√≥" : "Sala llena";
     }
 
     private void OnSceneLoadCompleted(string scene, LoadSceneMode mode,
@@ -287,6 +365,13 @@ public class SessionManager : MonoBehaviour
 
     private Vector3 GetSpawnPosition(ulong clientId)
     {
+        if (SceneManager.GetActiveScene().name == lobbyScene)
+        {
+            LobbyDoor door = FindFirstObjectByType<LobbyDoor>();
+            if (door != null && door.TryGetSpawnTransform(clientId, out Transform lobbySpawn))
+                return lobbySpawn.position;
+        }
+
         var points = FindObjectsByType<SpawnPoint>(FindObjectsSortMode.InstanceID);
         if (points.Length == 0) return Vector3.zero;
         return points[(int)(clientId % (ulong)points.Length)].transform.position;
@@ -295,10 +380,85 @@ public class SessionManager : MonoBehaviour
     // ---------- Cliente ----------
     private void OnClientDisconnected(ulong clientId)
     {
-        // Solo me interesa cuando soy yo el que se desconectÛ (cliente, no host)
+        // Solo me interesa cuando soy yo el que se desconect√≥ (cliente, no host)
         if (Net.IsServer) return;
         Debug.Log($"Desconectado: {Net.DisconnectReason}");
         JoinCode = "";
+        _ = LeaveLobbyAsync(deleteLobby: false);
         SceneManager.LoadScene(menuScene);
+    }
+
+    private void SetLobby(Lobby lobby, bool isHost)
+    {
+        _lobbyId = lobby.Id;
+        JoinCode = lobby.LobbyCode;
+        _isLobbyHost = isHost;
+        if (isHost) _heartbeatCoroutine = StartCoroutine(HeartbeatLobby());
+    }
+
+    private void SetConnectionData()
+    {
+        // Modo de prueba local: host y clientes corren en esta misma m√°quina.
+        Net.GetComponent<UnityTransport>().SetConnectionData("127.0.0.1", DirectTestPort);
+    }
+
+    private System.Collections.IEnumerator HeartbeatLobby()
+    {
+        var wait = new WaitForSecondsRealtime(15f);
+        while (!string.IsNullOrEmpty(_lobbyId) && _isLobbyHost)
+        {
+            yield return wait;
+            if (!string.IsNullOrEmpty(_lobbyId)) _ = SendLobbyHeartbeatAsync(_lobbyId);
+        }
+    }
+
+    private async Task SendLobbyHeartbeatAsync(string lobbyId)
+    {
+        try { await LobbyService.Instance.SendHeartbeatPingAsync(lobbyId); }
+        catch (Exception e) { Debug.LogWarning($"[Lobby] No se pudo renovar la sala: {e.Message}"); }
+    }
+
+    private async Task UpdateLobbyGameStateAsync(string gameState, bool isLocked)
+    {
+        if (!_isLobbyHost || string.IsNullOrEmpty(_lobbyId)) return;
+        try
+        {
+            await LobbyService.Instance.UpdateLobbyAsync(_lobbyId, new UpdateLobbyOptions
+            {
+                IsLocked = isLocked,
+                Data = new Dictionary<string, DataObject>
+                {
+                    { LobbyStateKey, new DataObject(DataObject.VisibilityOptions.Public, gameState) }
+                }
+            });
+        }
+        catch (Exception e) { Debug.LogWarning($"[Lobby] No se pudo actualizar el estado de la sala: {e.Message}"); }
+    }
+
+    private async Task LeaveLobbyAsync(bool deleteLobby)
+    {
+        if (_cleaningLobby || string.IsNullOrEmpty(_lobbyId)) return;
+        _cleaningLobby = true;
+        string lobbyId = _lobbyId;
+        string playerId = AuthenticationService.Instance != null ? AuthenticationService.Instance.PlayerId : "";
+        bool wasHost = _isLobbyHost;
+
+        _lobbyId = "";
+        _relayJoinCode = "";
+        _isLobbyHost = false;
+        JoinCode = "";
+        if (_heartbeatCoroutine != null)
+        {
+            StopCoroutine(_heartbeatCoroutine);
+            _heartbeatCoroutine = null;
+        }
+
+        try
+        {
+            if (deleteLobby && wasHost) await LobbyService.Instance.DeleteLobbyAsync(lobbyId);
+            else if (!string.IsNullOrEmpty(playerId)) await LobbyService.Instance.RemovePlayerAsync(lobbyId, playerId);
+        }
+        catch (Exception e) { Debug.LogWarning($"[Lobby] No se pudo limpiar la sala: {e.Message}"); }
+        finally { _cleaningLobby = false; }
     }
 }

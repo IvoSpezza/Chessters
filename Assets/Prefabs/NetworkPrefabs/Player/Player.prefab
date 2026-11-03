@@ -710,6 +710,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Health
   ShowTopMostFoldoutHeaderGroup: 1
+  _worldHealthBarWidth: 200
+  _worldHealthBarHeight: 24
+  _worldHealthBarOffset: 2
 --- !u!114 &938564086210004217
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -745,7 +748,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerInventory
   ShowTopMostFoldoutHeaderGroup: 1
   _catalog: {fileID: 11400000, guid: 833ca3c583436bd47be364e33048b6aa, type: 2}
-  _startingBackpackIds: 65000000
+  _startingBackpackIds:
+  - 101
 --- !u!114 &-8474937855633443832
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -808,7 +812,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerAttackVisuals
   ShowTopMostFoldoutHeaderGroup: 1
-  _effectMaterial: {fileID: 2100000, guid: 690966e7e37dbe6479fafdce2a55043b, type: 2}
+  _effectMaterial: {fileID: 0}
   _debugLogs: 0
 --- !u!1 &9212894340179382442
 GameObject:
