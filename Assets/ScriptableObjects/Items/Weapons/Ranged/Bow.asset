@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc95323e5924164981f865cd6c688d8, type: 3}
+  m_Name: Bow
+  m_EditorClassIdentifier: Assembly-CSharp::RangedData
+  _itemID: 103
+  _itemName: Simple Bow
+  _itemDescription: Simple bow, nothing more
+  _itemIcon: {fileID: 21300000, guid: d2658fddb8ed5304bb35b57aa2c6237f, type: 3}
+  _modifiers: []
+  _handsRequired: 2
+  _finalDamage: 0.8
+  _finalAttackSpeed: 0.9
+  _visualDuration: 0.15
+  _impactFraction: 0.5
+  _visualPrefab: {fileID: 8949805968742923104, guid: 20be6cd1545ddf345879a498cb0a047c, type: 3}
+  _projectilePrefab: {fileID: 8529188729954956373, guid: bff0db172552d2344927ddf676c9781d, type: 3}
+  _projectileSpeed: 12
+  _projectileLifetime: 2.5
+  _proyectileSpawnDistance: 0.08
+  _preWarmCount: 5
+  _obstacleMask:
+    serializedVersion: 2
+    m_Bits: 0
