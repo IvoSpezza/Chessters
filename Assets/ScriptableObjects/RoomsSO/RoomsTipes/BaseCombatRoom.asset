@@ -17,5 +17,4 @@ MonoBehaviour:
   _roomPrefab: {fileID: 1938266369097274972, guid: fac1d26b5dc57454dbe85821ce57e959, type: 3}
   _possibleCombats:
   - {fileID: 11400000, guid: 0c9d6e0025f99ca40a7a181e1a598267, type: 2}
-  - {fileID: 11400000, guid: 164f184cdd6df7c40b9dc7248f4530c3, type: 2}
   - {fileID: 11400000, guid: 0c9d6e0025f99ca40a7a181e1a598267, type: 2}

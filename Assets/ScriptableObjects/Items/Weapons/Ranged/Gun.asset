@@ -30,4 +30,4 @@ MonoBehaviour:
   _preWarmCount: 10
   _obstacleMask:
     serializedVersion: 2
-    m_Bits: 8
+    m_Bits: 128

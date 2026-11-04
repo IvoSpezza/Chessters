@@ -7,6 +7,7 @@ public class CombatRoomData : RoomData
     [SerializeField] private List<BaseCombatData> _possibleCombats = new List<BaseCombatData>();
 
     public override RoomType type => RoomType.Combat;
+    public IReadOnlyList<BaseCombatData> PossibleCombats => _possibleCombats;
 
     public BaseCombatData GetRandomCombat()
     {

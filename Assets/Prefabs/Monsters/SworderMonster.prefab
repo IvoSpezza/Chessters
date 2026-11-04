@@ -3770,8 +3770,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MonsterCombatAI
   ShowTopMostFoldoutHeaderGroup: 1
-  _hammer: {fileID: 0}
-  _sword: {fileID: 11400000, guid: 102a44c1a46a2044fad5a6738d071fda, type: 2}
+  Weapon: {fileID: 11400000, guid: 102a44c1a46a2044fad5a6738d071fda, type: 2}
   _attackSocket: {fileID: 8645967795170289368}
   _effectMaterial: {fileID: 2100000, guid: c2c7e911267d6ee409c7a06af949f818, type: 2}
   _attackRange: 3

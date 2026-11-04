@@ -3,18 +3,17 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>IA de combate cuerpo a cuerpo para monstruos con Stats y Health.</summary>
+/// <summary>Le da a un enemigo con Stats y Health el poder equiparles un arma y que persigan a l jugador mas cercano pata atacarlo.</summary>
 [RequireComponent(typeof(NetworkObject), typeof(Stats), typeof(Health))]
 public class MonsterCombatAI : NetworkBehaviour
 {
     private const float MinAttackInterval = 0.05f;
 
     [Header("Arma: asignar Hammer o Sword")]
-    [SerializeField] private HammerData _hammer;
-    [SerializeField] private SwordData _sword;
+    [SerializeField]private WeaponDataBase Weapon;   
 
     [Header("Visual del ataque")]
-    [Tooltip("Socket del arma que WeaponDataBase.PlayAttackVisual va a animar.")]
+    [Tooltip("Desde donde sale el ataque")]
     [SerializeField] private Transform _attackSocket;
     [SerializeField] private Material _effectMaterial;
 
@@ -36,7 +35,6 @@ public class MonsterCombatAI : NetworkBehaviour
     private readonly Collider[] _hitBuffer = new Collider[32];
     private readonly HashSet<IDamageable> _alreadyHit = new HashSet<IDamageable>();
 
-    private WeaponDataBase Weapon => _hammer != null ? _hammer : _sword;
 
     private void Awake()
     {
@@ -50,11 +48,7 @@ public class MonsterCombatAI : NetworkBehaviour
         {
             _socketRestPosition = _attackSocket.localPosition;
             _socketRestRotation = _attackSocket.localRotation;
-        }
-        else
-        {
-            Debug.LogWarning($"[{name}] Asigna el socket del arma para reproducir la visual del ataque.", this);
-        }
+        }        
     }
 
     public override void OnNetworkDespawn()
@@ -90,9 +84,8 @@ public class MonsterCombatAI : NetworkBehaviour
             return;
         }
 
-        // Mantiene distancia mientras se recarga el arma.
-        if (distance < _retreatDistance)
-            Move(-direction, _stats.GetStat(StatType.MoveSpeed) * _retreatSpeedMultiplier);
+        
+        if (distance < _retreatDistance) Move(-direction, _stats.GetStat(StatType.MoveSpeed) * _retreatSpeedMultiplier);
     }
 
     private bool TryGetNearestParticipant(out Health nearestHealth, out Vector3 nearestOffset, out float nearestDistance)
