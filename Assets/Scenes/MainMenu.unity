@@ -2831,7 +2831,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SessionManager
   maxPlayers: 6
   minPlayers: 2
-  useRelay: 1
+  useRelay: 0
   _connectionTypeEnum: 0
   authProfile: 
   menuScene: MainMenu

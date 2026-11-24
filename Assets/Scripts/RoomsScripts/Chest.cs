@@ -8,9 +8,9 @@ public enum ChestType
 }
 
 /// <summary>
-/// Cofre de la sala de tesoro. Prefab de red: NetworkObject + Chest (sin NetworkObject hijos).
-/// El tipo y su contenido solo existen en el servidor (nunca se replican): nadie sabe que hay adentro.
-/// El propio cofre maneja la decision (abrir / pasar); GameManager solo conoce la fase.
+/// Cofre de la sala de tesoro. Prefab de red: NetworkObject + Chest (sin NetworkObject hijos)
+/// El tipo y su contenido solo existen en el servidor (nunca se replican): nadie sabe que hay adentro
+/// El propio cofre maneja la decision (abrir / pasar); GameManager solo conoce la fase
 /// </summary>
 public class Chest : NetworkBehaviour
 {
@@ -23,7 +23,7 @@ public class Chest : NetworkBehaviour
 
     public bool IsOpened => _opened.Value;
 
-    // TODO: visual de cofre abierto (suscribirse a _opened.OnValueChanged en OnNetworkSpawn)
+    // IMPLEMENTAR visual de cofre abierto (suscribirse a _opened.OnValueChanged en OnNetworkSpawn)
 
     public void ServerSetup(ChestType type, int itemCount, CurseData curse)
     {
@@ -46,7 +46,7 @@ public class Chest : NetworkBehaviour
         GameManager.Instance.ServerOnChestResolved();
     }
 
-    /// <summary>[TEMP] Hoy el jugador de turno solo lo ignora. TODO: ofrecerlo a otro jugador al azar; si nadie lo quiere vuelve al dueño del turno.</summary>
+    /// <summary>[TEMP] Hoy el jugador de turno solo lo ignora.IMPLEMENTAR ofrecerlo a otro jugador al azar; si nadie lo quiere vuelve al dueño del turno</summary>
     [Rpc(SendTo.Server)]
     public void PassRpc(RpcParams rpcParams = default)
     {
@@ -55,7 +55,7 @@ public class Chest : NetworkBehaviour
         GameManager.Instance.ServerOnChestResolved();
     }
 
-    // El que decide hoy es el jugador de turno. TODO: variable con el decisor actual cuando exista la oferta.
+    // El que decide hoy es el jugador de turno. A IMPLEMENTAR variable con el decisor actual cuando exista la oferta
     private bool CanDecide(ulong sender)
     {
         GameManager game = GameManager.Instance;

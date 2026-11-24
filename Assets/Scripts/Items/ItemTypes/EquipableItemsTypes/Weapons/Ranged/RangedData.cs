@@ -9,11 +9,12 @@ public class RangedData : WeaponDataBase
     [SerializeField] private GameObject _projectilePrefab;
     [SerializeField] private float _projectileSpeed = 15f;
     [SerializeField] private float _projectileLifetime = 2f;
-    [Tooltip("Distancia al frente del origen del ataque donde nace el proyectil.")]
+    [Tooltip("Distancia al frente del origen del ataque donde nace el proyectil")]
     [SerializeField] private float _proyectileSpawnDistance = 0.08f;
-    [Tooltip("Proyectiles que se crean de antemano en el pool del servidor.")]
+
+    [Tooltip("Cantidad de proyectiles que se crean de antemano en el pool del servidor")]
     [SerializeField, Min(0)] private int _preWarmCount = 5;
-    [Tooltip("Capas que frenan el proyectil (suelo, paredes), además de los enemigos.")]
+    [Tooltip("Capa para que la bala frene")]
     [SerializeField] private LayerMask _obstacleMask;
 
     private const float RecoilDistance = 0.12f;
@@ -34,7 +35,7 @@ public class RangedData : WeaponDataBase
             direction, _projectileSpeed, _projectileLifetime, ownerClientId, sequence, awaitConfirmation: true);
     }
 
-    /// <summary>Visual independiente en los peers; no tiene colisiones ni replica transform.</summary>
+    /// <summary>Visual independiente, no tiene colisiones ni replica transform.</summary>
     public void ShowRemoteProjectile(Vector3 position, Vector3 direction, ulong ownerClientId, uint sequence)
     {
         if (_projectilePrefab == null) return;

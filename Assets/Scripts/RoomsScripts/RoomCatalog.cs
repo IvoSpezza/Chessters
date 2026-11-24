@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// Catalogo de salas y combates. Resuelve ID -> SO (lo unico que viaja por red).
-/// Arrastrar aca todas las salas y todos los combates del juego.
+/// Los combates se descubren desde las salas de combate para evitar registrarlos dos veces.
 /// </summary>
 [CreateAssetMenu(fileName = "RoomCatalog", menuName = "New Rooms/Room Catalog")]
 public class RoomCatalog : ScriptableObject
@@ -12,7 +12,6 @@ public class RoomCatalog : ScriptableObject
     public const int EmptyID = -1;
 
     [SerializeField] private List<RoomData> _rooms = new List<RoomData>();
-    [SerializeField] private List<BaseCombatData> _combats = new List<BaseCombatData>();
 
     private Dictionary<int, RoomData> _roomLookup;
     private Dictionary<int, BaseCombatData> _combatLookup;
@@ -31,7 +30,7 @@ public class RoomCatalog : ScriptableObject
 
     public bool TryGetCombat(int id, out BaseCombatData combat)
     {
-        if (_combatLookup == null) _combatLookup = BuildLookup(_combats, c => c.combatID);
+        if (_combatLookup == null) _combatLookup = BuildCombatLookup();
         return _combatLookup.TryGetValue(id, out combat);
     }
 
@@ -58,11 +57,36 @@ public class RoomCatalog : ScriptableObject
         return lookup;
     }
 
+    private Dictionary<int, BaseCombatData> BuildCombatLookup()
+    {
+        var lookup = new Dictionary<int, BaseCombatData>();
+        foreach (RoomData room in _rooms)
+        {
+            if (!(room is CombatRoomData combatRoom)) continue;
+
+            foreach (BaseCombatData combat in combatRoom.PossibleCombats)
+            {
+                if (combat == null) continue;
+                int id = combat.combatID;
+                if (id < 0)
+                    Debug.LogWarning($"[RoomCatalog] {combat.name} tiene ID negativo (-1 esta reservado)", this);
+                else if (lookup.TryGetValue(id, out BaseCombatData existing))
+                {
+                    // El mismo combate puede aparecer en varias salas; eso no es una colision de ID.
+                    if (existing != combat)
+                        Debug.LogError($"[RoomCatalog] ID de combate duplicado {id}: {combat.name} y {existing.name}", this);
+                }
+                else lookup.Add(id, combat);
+            }
+        }
+        return lookup;
+    }
+
 #if UNITY_EDITOR
     private void OnValidate()
     {
         _roomLookup = BuildLookup(_rooms, r => r.roomID);
-        _combatLookup = BuildLookup(_combats, c => c.combatID);
+        _combatLookup = BuildCombatLookup();
     }
 #endif
 }

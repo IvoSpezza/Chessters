@@ -2,7 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
-/// [TEMP] Panel OnGUI para probar fases, turnos, planificacion y cofres sin UI. Ponerlo en la escena Game.
+/// Panel OnGUI para probar fases, turnos, planificacion y cofres sin UI. 
 /// Se borra cuando exista la UI real.
 /// </summary>
 public class GameDebugHud : MonoBehaviour
