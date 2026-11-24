@@ -5,64 +5,85 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Movimiento con client anticipation (prediccion del cliente + autoridad del servidor).
-///
-/// Reglas del modelo:
-///  - La FUENTE DE VERDAD de la simulacion es _pos / _lookDir, NO el transform.
-///  - El servidor (y el host) escribe el transform directamente.
-///  - El cliente dueño muestra su prediccion con AnticipatedNetworkTransform
-///    (AnticipateMove / AnticipateRotate).
+/// Explicacion: 
 ///
 /// Flujo:
-///  - El dueño simula su input al instante y lo muestra con AnticipateMove/AnticipateRotate.
-///  - Ese mismo input se envia al servidor por RPC y el servidor aplica la MISMA logica.
-///  - El estado autoritativo vuelve solo, por el AnticipatedNetworkTransform (no hay RPC de estado).
-///  - Cuando llega, el sistema llama a OnReanticipate: volvemos al estado del servidor,
-///    re-aplicamos los inputs que el servidor todavia no vio y decidimos si ignorar,
-///    suavizar o saltar a la correccion.
+/// El dueÃ±o simula su input al instante y se envia al servidor por RPC, 
+/// el servidor recibe el imput, lo aplica u devuekve ek estado autoritativo (por el AnticipatedNetworkTransform, no hay RPC de estado)
+/// 
+/// Cuando llega al cliente, el sistema llama a OnReanticipate: volvemos al estado del servidor,
+/// re-aplicamos los inputs que el servidor todavia no vio y decidimos si ignorar,
+/// suavizar o saltar a la correccion.
+///
+/// Colisiones:
+/// El Rigidbody es KINEMATIC: solo sirve para que los triggers detecten al jugador
+/// Las paredes y el suelo se resuelven a mano en SimulateStep con CapsuleCast
+///    (collide and slide). Como solo consulta la fisica estatica, el resultado es igual
+///    en cliente y servidor, y se puede re-simular en OnReanticipate
 ///
 /// La velocidad maxima sale de PlayerStats (StatType.MoveSpeed).
 /// </summary>
-[RequireComponent(typeof(PlayerStats))]
+[RequireComponent(typeof(Stats), typeof(Rigidbody), typeof(CapsuleCollider))]
 public class PlayerMovement : NetworkBehaviour
 {
     private const float STOPVALUE = 0.01f;
     private const int MAX_HISTORY = 256;
+    private const int MAX_SLIDE_ITERATIONS = 3;
 
     [Header("Horizontal Movement")]
-    [Tooltip("Segundos para llegar de 0 a la velocidad maxima (MoveSpeed de PlayerStats).")]
+    [Tooltip("Segundos para llegar de 0 a la velocidad maxima")]
     [SerializeField, Min(0.01f)] private float _timeToMaxSpeed = 0.12f;
-    [Tooltip("Segundos para frenar por completo desde la velocidad maxima.")]
+    [Tooltip("Segundos para frenar por completo desde la velocidad maxima")]
     [SerializeField, Min(0.01f)] private float _timeToStop = 0.08f;
 
     [Header("Vertical Movement")]
     [SerializeField, Min(0)] private float _jumpForce = 10f;
     [SerializeField, Min(0)] private float _gravityForce = 20f;
-    [SerializeField] private LayerMask _groundLayer;
-    [SerializeField] private float _groundCheckDistance = 1.1f;
 
-    [Header("Reconciliacion (cliente dueño)")]
-    [Tooltip("Error menor a esto: se ignora la correccion y se conserva lo que el cliente ya mostraba.")]
+    [Header("Colisiones")]
+    [Tooltip("Capas que bloquean el movimiento")]
+    [SerializeField] private LayerMask _collisionMask;
+    [Tooltip("Separacion minima que se deja con las superficies para no quedar pegado")]
+    [SerializeField, Min(0.001f)] private float _skinWidth = 0.02f;
+    [Tooltip("Pendiente maxima que cuenta como suelo caminable")]
+    [SerializeField, Range(0f, 89f)] private float _maxSlopeAngle = 45f;
+    [Tooltip("Distancia hacia abajo (desdel transform) para considerar que esta en el suelo")]
+    [SerializeField, Min(0.01f)] private float _groundCheckDistance = 0.1f;
+
+    [Header("Datos para la reconciliacion (cliente dueÃ±o)")]
+    [Tooltip("Error menor a esto: se ignora la correccion y se conserva lo que el cliente ya mostraba")]
     [SerializeField, Min(0)] private float _ignoreDistance = 0.25f;
-    [Tooltip("Error entre _ignoreDistance y este valor: correccion suavizada. Mayor: salto directo.")]
+
+    [Tooltip("Error entre _ignoreDistance y este valor: correccion suavizada. Mayor: salto directo")]
     [SerializeField, Min(0)] private float _smoothDistance = 3f;
-    [Tooltip("Duracion del suavizado en segundos. 0 = nunca suaviza (solo ignora o salta).")]
+
+    [Tooltip("Duracion del suavizado en segundos. (0 = nunca suaviza)")]
     [SerializeField, Min(0)] private float _smoothTime = 0.25f;
 
     [Header("Debug")]
     [SerializeField] private bool _debugLogs;
 
+    private Rigidbody _rb;
+    private CapsuleCollider _capsule;
     private AnticipatedNetworkTransform _ant;
     private LookToMause _lookToMause;
     private PlayerInput _playerInput;
-    private PlayerStats _stats;
+    private Stats _stats;
 
-    // Input local (solo el dueño)
+    // Medidas de la capsula en espacio mundo, relativas a _pos (se calculan al spawnear)
+    private float _capsuleRadius;
+    private float _capsuleHalfSegment;  
+    private float _capsuleCenterY;      
+    private float _cosMaxSlope;
+
+    // Input local (solo el dueÃ±o)
     private Vector2 _currentMoveInput;
     private bool _jumpRequested;
     private int _inputCounter;
+    private int _simulationEpoch;
+    private int _lastAckedTick;
 
-    // Estado de la simulacion (fuente de verdad: NO el transform)
+    // Estado de la simulacion (fuente de verdad, un transform propio)
     private Vector3 _pos;
     private Vector3 _lookDir = Vector3.forward;
 
@@ -70,33 +91,56 @@ public class PlayerMovement : NetworkBehaviour
     private Vector3 _horizontalVelocity;
     private float _verticalVelocity;
 
-    private struct SimState
-    {
-        public float VerticalVelocity;
-        public Vector3 HorizontalVelocity;
-    }
-
-    // Historial de inputs del cliente dueño, con timestamp de red.
     private struct HistoryImput
     {
-        public double Time;
         public InputData Input;
-        public SimState StateAfter;
     }
     private readonly List<HistoryImput> _history = new List<HistoryImput>();
 
+    private readonly Queue<InputData> _serverInputQueue = new Queue<InputData>();
+    private int _lastReceivedTick;
+    private int _lastProcessedTick;
+
+    private struct MovementSnapshot : INetworkSerializable
+    {
+        public int Epoch;
+        public int Tick;
+        public Vector3 Position;
+        public Vector3 LookDirection;
+        public Vector3 HorizontalVelocity;
+        public float VerticalVelocity;
+
+        public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+        {
+            serializer.SerializeValue(ref Epoch);
+            serializer.SerializeValue(ref Tick);
+            serializer.SerializeValue(ref Position);
+            serializer.SerializeValue(ref LookDirection);
+            serializer.SerializeValue(ref HorizontalVelocity);
+            serializer.SerializeValue(ref VerticalVelocity);
+        }
+    }
+
     // ------------------------------------------------------------------
     // OnNetworkSpawn
-    // Habilita input y mouse solo para el dueño, toma la posicion
-    // de spawn como estado inicial y, en el
-    // cliente dueño (no host), activa la reanticipacion constante.
+    // Habilita input y mouse solo para el dueÃ±o, configura el Rigidbody kinematic,
+    // mide la capsula, toma la posicion de spawn como estado inicial y, en el
+    // cliente dueÃ±o (no host), activa la reanticipacion constante
     // ------------------------------------------------------------------
     public override void OnNetworkSpawn()
     {
         _playerInput = GetComponent<PlayerInput>();
         _lookToMause = GetComponent<LookToMause>();
         _ant = GetComponent<AnticipatedNetworkTransform>();
-        _stats = GetComponent<PlayerStats>();
+        _stats = GetComponent<Stats>();
+        _rb = GetComponent<Rigidbody>();
+        _capsule = GetComponent<CapsuleCollider>();
+
+        _rb.isKinematic = true;
+        _rb.useGravity = false;
+        _rb.interpolation = RigidbodyInterpolation.None;
+
+        CacheCapsule();
 
         _playerInput.enabled = IsOwner;
         _lookToMause.enabled = IsOwner;
@@ -112,25 +156,53 @@ public class PlayerMovement : NetworkBehaviour
 
         if (IsOwner) CameraManager.Instance.SetTarget(transform);
 
-        if (IsOwner && !IsServer) _ant.StaleDataHandling = StaleDataHandling.Reanticipate;
+        if (IsOwner && !IsServer) _ant.StaleDataHandling = StaleDataHandling.Ignore;
+    }
+        
+    private void CacheCapsule()
+    {
+        Vector3 scale = transform.lossyScale;
+        _capsuleRadius = _capsule.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float height = Mathf.Max(_capsule.height * Mathf.Abs(scale.y), _capsuleRadius * 2f);
+        _capsuleHalfSegment = height * 0.5f - _capsuleRadius;
+        _capsuleCenterY = _capsule.center.y * scale.y;
+        _cosMaxSlope = Mathf.Cos(_maxSlopeAngle * Mathf.Deg2Rad);
+
+        if (_collisionMask.value == 0)
+            Debug.LogWarning($"[{name}] _collisionMask vacia: el jugador no va a colisionar con nada (ni con el suelo).", this);
     }
 
     // ------------------------------------------------------------------
     // FixedUpdate
-    // Solo corre para el dueño (cliente o host). Los jugadores remotos los
-    // mueve el servidor desde el RPC, no desde aca.
-    //  1. Arma el InputData de este tick.
-    //  2. Lo simula y lo muestra de inmediato (sin esperar al servidor).
-    //  3. Si es el host, termina: ya es la autoridad.
-    //  4. Si es cliente: lo guarda en el historial y lo manda al servidor.
-    // ------------------------------------------------------------------
+    // Solo corre para el dueÃ±o (cliente o host). Los jugadores remotos los
+    // mueve el servidor desde el RPC, no desde aca
+    //  1. Arma el InputData de este tick
+    //  2. Lo simula y lo muestra de inmediato (sin esperar al servidor)
+    //  3. Si es el host, termina: ya es la autoridad
+    //  4. Si es cliente: lo guarda en el historial y lo manda al servidor
+    // -------------------------------------------------------------------
     private void FixedUpdate()
     {
+        if (!CanMove)
+        {
+            _currentMoveInput = Vector2.zero;
+            _jumpRequested = false;
+            return;
+        }
+        if (IsServer && !IsOwner)
+        {
+            ProcessOneQueuedInput();
+            return;
+        }
+
         if (!IsOwner) return;
+       
+        if (!IsServer && _history.Count >= MAX_HISTORY) return;
 
         InputData input = new InputData
         {
             Tick = ++_inputCounter,
+            Epoch = _simulationEpoch,
             MoveInput = _currentMoveInput,
             LookDirection = _lookToMause.GetOrientation(),
             JumpPressed = _jumpRequested
@@ -142,108 +214,155 @@ public class PlayerMovement : NetworkBehaviour
 
         if (IsServer) return;
 
-        _history.Add(new HistoryImput
-        {
-            Time = NetworkManager.LocalTime.Time,
-            Input = input,
-            StateAfter = CaptureState()
-        });
-
-        while (_history.Count > MAX_HISTORY) _history.RemoveAt(0);
-
-        //------------------------------------\\
+        _history.Add(new HistoryImput { Input = input });
 
         SubmitInputServerRpc(input);
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------------------------
     // SubmitInputServerRpc
-    // Se ejecuta en el servidor cuando llega un input de un cliente.
-    // Aplica exactamente la misma simulacion que el cliente. Como se llama
-    // con AnticipateMove en el servidor, el componente actualiza solo el
-    // estado autoritativo y lo replica a todos.
+    // Se ejecuta en el servidor cuando llega un input de un cliente
+    // Valida que el emisor sea el dueÃ±o del cuerpo y aplica exactamente la
+    // misma simulacion que el cliente. Como se llama con AnticipateMove en
+    // el servidor, el componente actualiza solo el estado autoritativo y
+    // lo replica a todos
     // ------------------------------------------------------------------
     [Rpc(SendTo.Server)]
-    private void SubmitInputServerRpc(InputData input)
+    private void SubmitInputServerRpc(InputData input, RpcParams rpcParams = default)
     {
-        SimulateStep(input);
-        ApplyToAnticipatedTransform();
+        if (!IsServer || rpcParams.Receive.SenderClientId != OwnerClientId) return;
+        PlayerSoul soul = PlayerSoul.GetFor(OwnerClientId);
+        if (soul != null && !soul.IsAlive) return;
+        if (input.Epoch != _simulationEpoch || input.Tick != _lastReceivedTick + 1) return;
+        if (!IsFinite(input.MoveInput.x) || !IsFinite(input.MoveInput.y) ||
+            !IsFinite(input.LookDirection.x) || !IsFinite(input.LookDirection.y) || !IsFinite(input.LookDirection.z)) return;
+
+        if (_serverInputQueue.Count >= MAX_HISTORY)
+        {
+            _serverInputQueue.Clear();
+            _lastReceivedTick = input.Tick;
+            _lastProcessedTick = input.Tick;
+            SendMovementSnapshot();
+            return;
+        }
+
+        _lastReceivedTick = input.Tick;
+        _serverInputQueue.Enqueue(input);
     }
 
-    // ------------------------------------------------------------------
-    // OnReanticipate
-    // Lo llama el AnticipatedNetworkTransform cuando llega un estado nuevo
-    // del servidor (StaleDataHandling = Reanticipate). Antes de llamarlo, el
-    // sistema ya revirtio el estado anticipado al autoritativo.
-    //  1. Guarda lo que el cliente estaba mostrando (previousState).
-    //  2. Calcula a que momento corresponde el estado recibido.
-    //  3. Restaura las velocidades que teniamos en ese momento.
-    //  4. Re-aplica los inputs posteriores desde la posicion autoritativa.
-    //  5. Compara con lo que se mostraba: ignora, suaviza o salta.
-    // ------------------------------------------------------------------
-    public override void OnReanticipate(double lastRoundTripTime)
+    private void ProcessOneQueuedInput()
     {
-        if (!IsOwner || IsServer || _ant == null) return;
+        if (_serverInputQueue.Count == 0) return;
 
-        var previousState = _ant.PreviousAnticipatedState;
-        double authorityTime = NetworkManager.LocalTime.Time - lastRoundTripTime;
+        InputData input = _serverInputQueue.Dequeue();
+        if (input.Epoch != _simulationEpoch) return;
 
-        // Ultimo input que el servidor ya habria procesado (el historial esta en orden).
-        int lastOld = -1;
-        for (int i = 0; i < _history.Count; i++)
+        SimulateStep(input);
+        _lastProcessedTick = input.Tick;
+        ApplyToAnticipatedTransform();
+        SendMovementSnapshot();
+    }
+
+    [Rpc(SendTo.Owner)]
+    private void MovementSnapshotRpc(MovementSnapshot snapshot)
+    {
+        if (IsServer || !IsOwner) return;
+        Reconcile(snapshot);
+    }
+
+    private void SendMovementSnapshot()
+    {
+        if (!IsServer || IsOwner) return;
+
+        MovementSnapshotRpc(new MovementSnapshot
         {
-            if (_history[i].Time <= authorityTime) lastOld = i;
-            else break;
+            Epoch = _simulationEpoch,
+            Tick = _lastProcessedTick,
+            Position = _pos,
+            LookDirection = _lookDir,
+            HorizontalVelocity = _horizontalVelocity,
+            VerticalVelocity = _verticalVelocity
+        });
+    }
+
+    private void Reconcile(MovementSnapshot snapshot)
+    {
+        if (snapshot.Epoch < _simulationEpoch) return;
+        if (snapshot.Epoch > _simulationEpoch)
+        {
+            _simulationEpoch = snapshot.Epoch;
+            _inputCounter = 0;
+            _lastAckedTick = 0;
+            _history.Clear();
         }
+        if (snapshot.Tick < _lastAckedTick) return;
 
-        if (lastOld >= 0) RestoreState(_history[lastOld].StateAfter);
+        var previousState = _ant.AnticipatedState;
+        _lastAckedTick = snapshot.Tick;
 
-        // Arrancamos desde el estado autoritativo.
-        _pos = _ant.AnticipatedState.Position;
+        int confirmedCount = 0;
+        while (confirmedCount < _history.Count && _history[confirmedCount].Input.Tick <= snapshot.Tick)
+            confirmedCount++;
+        if (confirmedCount > 0) _history.RemoveRange(0, confirmedCount);
 
-        // Re-simulamos lo que el servidor todavia no vio.
-        for (int i = lastOld + 1; i < _history.Count; i++)
-        {
+        _pos = snapshot.Position;
+        _lookDir = snapshot.LookDirection;
+        _horizontalVelocity = snapshot.HorizontalVelocity;
+        _verticalVelocity = snapshot.VerticalVelocity;
+
+        for (int i = 0; i < _history.Count; i++)
             SimulateStep(_history[i].Input);
 
-            HistoryImput item = _history[i];
-            item.StateAfter = CaptureState();
-            _history[i] = item;
-        }
+        ApplyToAnticipatedTransform();
 
-        if (lastOld >= 0) _history.RemoveRange(0, lastOld + 1);
-
-        ApplyToAnticipatedTransform(); // AnticipatedState = resultado corregido
-
-        float sqDist = (previousState.Position - _ant.AnticipatedState.Position).sqrMagnitude;
+        var correctedState = _ant.AnticipatedState;
+        float sqDist = (previousState.Position - correctedState.Position).sqrMagnitude;
         if (_debugLogs)
-            Debug.Log($"[Reanticipate] error={Mathf.Sqrt(sqDist):F3} rtt={lastRoundTripTime:F3} pendientes={_history.Count}");
+            Debug.Log($"[Reconcile] tick={snapshot.Tick} error={Mathf.Sqrt(sqDist):F3} pendientes={_history.Count}");
 
-        if (_smoothTime <= 0f) return; // modo Snap: queda el estado corregido
-
+        if (_smoothTime <= 0f) return;
         if (sqDist <= _ignoreDistance * _ignoreDistance)
         {
-            // Diferencia minima: conservamos lo que el cliente ya mostraba.
             _ant.AnticipateState(previousState);
             _pos = previousState.Position;
         }
         else if (sqDist < _smoothDistance * _smoothDistance)
         {
-            _ant.Smooth(previousState, _ant.AnticipatedState, _smoothTime);
+            _ant.Smooth(previousState, correctedState, _smoothTime);
         }
-        // Si es mayor: salto directo al estado corregido (ya aplicado).
+    }
+
+    private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
+    private bool CanMove
+    {
+        get
+        {
+            PlayerSoul soul = PlayerSoul.GetFor(OwnerClientId);
+            return soul == null || soul.IsAlive;
+        }
+    }
+
+    
+    public override void OnReanticipate(double lastRoundTripTime)
+    {
+        if (!IsOwner || IsServer || _ant == null) return;
+
+        var predictedState = _ant.PreviousAnticipatedState;
+        _ant.AnticipateState(predictedState);
+        _pos = predictedState.Position;
     }
 
     // ------------------------------------------------------------------
     // SimulateStep
-    // Un paso de simulacion (un FixedUpdate). Identico en cliente y servidor.
-    // Solo toca _pos, _lookDir y las velocidades; nunca el transform.
-    //  - Rotacion: guarda la direccion del mouse.
-    //  - Suelo: raycast hacia abajo desde _pos.
-    //  - Salto y gravedad: modifican _verticalVelocity.
-    //  - Horizontal: la velocidad (un solo vector) se mueve hacia input * MoveSpeed.
-    //    Al invertir la direccion pasa por cero de forma natural.
-    //  - Desplazamiento: SUMA velocidad * dt a _pos.
+    // Un paso de simulacion (un FixedUpdate). Identico en cliente y servidor
+    // Solo toca _pos, _lookDir y las velocidades; nunca el transform
+    //  - Rotacion: guarda la direccion del mouse
+    //  - Suelo: CapsuleCast corto hacia abajo desde _pos
+    //  - Salto y gravedad: modifican _verticalVelocity
+    //  - Horizontal: la velocidad (un solo vector) se mueve hacia input * MoveSpeed
+    //    Al invertir la direccion pasa por cero de forma natural
+    //  - Desplazamiento: MoveAndCollide (frena y desliza contra paredes/suelo/techo)
     // ------------------------------------------------------------------
     private void SimulateStep(InputData input)
     {
@@ -252,7 +371,7 @@ public class PlayerMovement : NetworkBehaviour
         if (input.LookDirection != Vector3.zero)
             _lookDir = input.LookDirection;
 
-        bool isGrounded = Physics.Raycast(_pos, Vector3.down, _groundCheckDistance, _groundLayer);
+        bool isGrounded = CheckGrounded(_pos);
 
         if (input.JumpPressed && isGrounded)
             _verticalVelocity = _jumpForce;
@@ -262,7 +381,6 @@ public class PlayerMovement : NetworkBehaviour
         else
             _verticalVelocity -= _gravityForce * dt;
 
-        // --- Horizontal ---
         Vector2 clampedInput = Vector2.ClampMagnitude(input.MoveInput, 1f);
         bool isMoving = clampedInput.sqrMagnitude > STOPVALUE;
 
@@ -271,9 +389,7 @@ public class PlayerMovement : NetworkBehaviour
             ? new Vector3(clampedInput.x, 0f, clampedInput.y) * moveSpeed
             : Vector3.zero;
 
-        // La aceleracion se define por tiempo: asi el arranque y el frenado se sienten igual
-        // aunque un item o sabotaje cambie el MoveSpeed. Si el MoveSpeed baja (o es 0) mientras
-        // vamos mas rapido, usamos la velocidad actual de referencia para frenar igual.
+        // seteando la acceleracion segun el tiempo
         float reference = Mathf.Max(moveSpeed, _horizontalVelocity.magnitude);
         float time = isMoving ? _timeToMaxSpeed : _timeToStop;
         float rate = reference / Mathf.Max(time, 0.0001f);
@@ -282,16 +398,63 @@ public class PlayerMovement : NetworkBehaviour
 
         Vector3 velocity = _horizontalVelocity;
         velocity.y = _verticalVelocity;
-
-        _pos += velocity * dt;
+                
+        float yBefore = _pos.y;
+        _pos = MoveAndCollide(_pos, velocity * dt);
+               
+        if (_verticalVelocity > 0f && (_pos.y - yBefore) < _verticalVelocity * dt * 0.5f) _verticalVelocity = 0f;
     }
 
-    // ------------------------------------------------------------------
-    // ApplyToAnticipatedTransform
-    // Traduce el estado simulado a lo que se ve. Se usa en cliente dueño Y
-    // en servidor: el componente detecta quien es la autoridad por si solo.
-    // El transform nunca se escribe a mano.
-    // ------------------------------------------------------------------
+   
+    // Mueve la capsula 'delta' desde 'start'. Si choca, frena dejando _skinWidth de margen.
+    // Desliza lo que sobra por la superficie (hasta MAX_SLIDE_ITERATIONS veces).
+    private Vector3 MoveAndCollide(Vector3 start, Vector3 delta)
+    {
+        Vector3 pos = start;
+        Vector3 remaining = delta;
+
+        for (int i = 0; i < MAX_SLIDE_ITERATIONS; i++)
+        {
+            float distance = remaining.magnitude;
+            if (distance < 0.0001f) break;
+
+            Vector3 dir = remaining / distance;
+
+            if (!CastCapsule(pos, dir, distance + _skinWidth, out RaycastHit hit))
+            {
+                pos += remaining;
+                break;
+            }
+                       
+            float moveDistance = Mathf.Max(0f, hit.distance - _skinWidth);
+            pos += dir * moveDistance;
+
+            Vector3 leftover = dir * (distance - moveDistance);
+            remaining = Vector3.ProjectOnPlane(leftover, hit.normal);
+        }
+
+        return pos;
+    }
+        
+    private bool CheckGrounded(Vector3 position)
+    {
+        if (!CastCapsule(position, Vector3.down, _groundCheckDistance + _skinWidth, out RaycastHit hit))
+            return false;
+
+        return hit.normal.y >= _cosMaxSlope;
+    }
+
+    private bool CastCapsule(Vector3 position, Vector3 direction, float distance, out RaycastHit hit)
+    {
+        Vector3 center = position + Vector3.up * _capsuleCenterY;
+        Vector3 top = center + Vector3.up * _capsuleHalfSegment;
+        Vector3 bottom = center - Vector3.up * _capsuleHalfSegment;
+
+        return Physics.CapsuleCast(top, bottom, _capsuleRadius, direction, out hit, distance,
+                                   _collisionMask, QueryTriggerInteraction.Ignore);
+    }
+
+    
     private void ApplyToAnticipatedTransform()
     {
         if (_ant == null) return;
@@ -301,49 +464,60 @@ public class PlayerMovement : NetworkBehaviour
             _ant.AnticipateRotate(Quaternion.LookRotation(_lookDir, Vector3.up));
     }
 
-    // ------------------------------------------------------------------
-    // CaptureState / RestoreState
-    // Guardan y restauran las velocidades. El servidor no las envia, asi que
-    // el cliente las recuerda por cada input para poder re-simular bien.
-    // ------------------------------------------------------------------
-    private SimState CaptureState() => new SimState
-    {
-        VerticalVelocity = _verticalVelocity,
-        HorizontalVelocity = _horizontalVelocity
-    };
-
-    private void RestoreState(SimState s)
-    {
-        _verticalVelocity = s.VerticalVelocity;
-        _horizontalVelocity = s.HorizontalVelocity;
-    }
-
-    // ------------------------------------------------------------------
-    // OnMove / OnJump
-    // Callbacks del PlayerInput (Behavior: Send Messages). Solo guardan el
-    // input; se consume en el proximo FixedUpdate.
-    // ------------------------------------------------------------------
     public void OnMove(InputValue action)
     {
-        if (!IsOwner) return;
+        if (!IsOwner || !CanMove) return;
         _currentMoveInput = action.Get<Vector2>();
     }
 
     public void OnJump()
     {
-        if (!IsOwner) return;
+        if (!IsOwner || !CanMove) return;
         _jumpRequested = true;
+    }
+    
+    public void ServerTeleport(Vector3 position)
+    {
+        if (!IsServer) return;
+        _simulationEpoch++;
+        _lastReceivedTick = 0;
+        _lastProcessedTick = 0;
+        _serverInputQueue.Clear();
+        ResetSimulation(position, _simulationEpoch);
+        TeleportOwnerRpc(position, _simulationEpoch);
+    }
+
+    [Rpc(SendTo.Owner)]
+    private void TeleportOwnerRpc(Vector3 position, int epoch)
+    {
+        if (IsServer || !IsOwner || epoch < _simulationEpoch) return;
+        _inputCounter = 0;
+        _lastAckedTick = 0;
+        ResetSimulation(position, epoch);
+    }
+
+    private void ResetSimulation(Vector3 position, int epoch)
+    {
+        _simulationEpoch = epoch;
+        _pos = position;
+        _lookDir = transform.forward;
+        _horizontalVelocity = Vector3.zero;
+        _verticalVelocity = 0f;
+        _history.Clear();
+        if (!IsServer) _lastAckedTick = 0;
+        ApplyToAnticipatedTransform();
     }
 }
 
 /* Reporte que envia el cliente al servidor:
- * Almacena los imputs del cliente con el tick exacto en el que ocurrieron.
- * El cliente ejecuta instantaneamente sus imputs de manera local para no sentir lag.
+ * Almacena los imputs del cliente con el tick exacto en el que ocurrieron
+ * El cliente ejecuta instantaneamente sus imputs de manera local para no sentir lag
  * A la par, crea un reporte con los datos de la accion en ese momento
  */
 public struct InputData : INetworkSerializable
 {
     public int Tick;
+    public int Epoch;
     public Vector2 MoveInput;
     public Vector3 LookDirection;
     public bool JumpPressed;
@@ -351,6 +525,7 @@ public struct InputData : INetworkSerializable
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref Tick);
+        serializer.SerializeValue(ref Epoch);
         serializer.SerializeValue(ref MoveInput);
         serializer.SerializeValue(ref LookDirection);
         serializer.SerializeValue(ref JumpPressed);

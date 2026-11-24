@@ -12,11 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15ffe9babbd0f284f87900a75c786ebc, type: 3}
   m_Name: WoodenLeggins
   m_EditorClassIdentifier: Assembly-CSharp::ArmorData
-  _itemID: 203
+  _itemID: 206
   _itemName: Wooden Leggins
   _itemDescription: Pantalones de madera
-  _itemIcon: {fileID: 0}
-  _modifiers: []
+  _itemIcon: {fileID: 21300000, guid: c2549b89eee1bb04abca70bd7a18d499, type: 3}
+  _modifiers:
+  - Type: 0
+    Modifier: 1
+    Value: 0.4
+    Id: 0
   _slot: 2
   _category: 1
   _visualPrefab: {fileID: 0}

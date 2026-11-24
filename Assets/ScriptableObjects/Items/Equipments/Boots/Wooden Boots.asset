@@ -15,15 +15,11 @@ MonoBehaviour:
   _itemID: 204
   _itemName: Wooden Boots
   _itemDescription: Botas de madera
-  _itemIcon: {fileID: 0}
+  _itemIcon: {fileID: 21300000, guid: 5a17c48ba9f4bd34a8513e8a2de5b492, type: 3}
   _modifiers:
-  - Type: 1
-    Modifier: 1
-    Value: 2
-    Id: 0
   - Type: 0
     Modifier: 0
-    Value: 3
+    Value: 4
     Id: 0
   _slot: 3
   _category: 1

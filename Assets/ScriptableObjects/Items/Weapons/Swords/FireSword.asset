@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d70a6b98f91508a4c9880f5d8faf8642, type: 3}
+  m_Name: FireSword
+  m_EditorClassIdentifier: Assembly-CSharp::SwordData
+  _itemID: 105
+  _itemName: FireSword
+  _itemDescription: LARGE AND HEAVY
+  _itemIcon: {fileID: 21300000, guid: 79f29ff53d1fa9a4e992c7ed51d27b34, type: 3}
+  _modifiers:
+  - Type: 1
+    Modifier: 0
+    Value: 0.25
+    Id: 0
+  _handsRequired: 2
+  _finalDamage: 1.5
+  _finalAttackSpeed: 0.65
+  _visualDuration: 0.3
+  _impactFraction: 0.65
+  _visualPrefab: {fileID: 5854372404208283510, guid: 8988805dccc1ff24fa70728e1a48ad60, type: 3}
+  _slashAngle: 150
+  _slashRange: 3.8

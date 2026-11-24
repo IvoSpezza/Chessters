@@ -15,7 +15,7 @@ MonoBehaviour:
   _itemID: 201
   _itemName: Wooden Helmet
   _itemDescription: Casco de madera simple
-  _itemIcon: {fileID: 0}
+  _itemIcon: {fileID: 21300000, guid: 9ac5159a4422463449e845d5803cce01, type: 3}
   _modifiers:
   - Type: 0
     Modifier: 0

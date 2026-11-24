@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 737d059e6bd6f774f811bd6964019b62, type: 3}
+  m_Name: UglyRoom
+  m_EditorClassIdentifier: Assembly-CSharp::CombatRoomData
+  _roomID: 104
+  _roomName: UglyRoom
+  _roomPrefab: {fileID: 2529936124412125291, guid: f27164b0030597a4f9ab1ae00d9b6ce0, type: 3}
+  _possibleCombats:
+  - {fileID: 11400000, guid: 4493473730d4ec14a92af2af4ad70d6b, type: 2}
+  - {fileID: 11400000, guid: 0c9d6e0025f99ca40a7a181e1a598267, type: 2}

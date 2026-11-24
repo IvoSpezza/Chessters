@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7fe2fcc5ca4d7f9448695cc664c85e1e, type: 3}
+  m_Name: RingOfLove
+  m_EditorClassIdentifier: Assembly-CSharp::AccessoryData
+  _itemID: 302
+  _itemName: RingOfLove
+  _itemDescription: anillo epico papa
+  _itemIcon: {fileID: 0}
+  _modifiers:
+  - Type: 1
+    Modifier: 0
+    Value: 5
+    Id: 0
+  _category: 0
