@@ -4,8 +4,8 @@ using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
-/// Tiene dos usos separados: bala física simulada solo por el servidor y visual local sin colisiones.
-/// Ninguna instancia del proyectil es un NetworkObject; el servidor anuncia disparo e impacto por RPC.
+/// Tiene dos usos separados: bala física simulada solo por el servidor y visual local sin colisiones
+/// Ninguna instancia del proyectil es un NetworkObject; el servidor anuncia disparo e impacto por RPC
 /// </summary>
 public class Projectile : MonoBehaviour
 {
@@ -77,7 +77,7 @@ public class Projectile : MonoBehaviour
             if (collider != null) collider.enabled = enabled;
     }
 
-    /// <summary>Vuela inmediatamente en el peer local; no calcula impactos ni aplica daño.</summary>
+    /// <summary>Vuela inmediatamente en el peer local; no calcula impactos ni aplica daño</summary>
     public static void SpawnPredictedVisual(GameObject prefab, Vector3 position, Quaternion rotation,
         Vector3 direction, float speed, float lifetime, ulong clientId, uint sequence)
     {
@@ -102,7 +102,7 @@ public class Projectile : MonoBehaviour
         Visuals[key] = visual;
     }
 
-    /// <summary>Registra el tiro local como predicción, pendiente de validación del servidor.</summary>
+    /// <summary>Registra el tiro local como predicción, pendiente de validación del servidor</summary>
     public static void SpawnPredictedVisual(GameObject prefab, Vector3 position, Quaternion rotation,
         Vector3 direction, float speed, float lifetime, ulong clientId, uint sequence, bool awaitConfirmation)
     {
@@ -170,7 +170,7 @@ public class Projectile : MonoBehaviour
             Visuals.Remove(_key);
     }
 
-    /// <summary>Inicializa la instancia física del servidor, que es la única que consulta colisiones.</summary>
+    /// <summary>Inicializa la instancia física del servidor, que es la única que consulta colisiones</summary>
     public void ServerLaunch(Vector3 direction, float speed, float damage, float lifetime, LayerMask hitMask,
         ulong ignoredOwnerNetworkId)
     {
@@ -271,7 +271,7 @@ public class Projectile : MonoBehaviour
         ProjectilePool.Return(this);
     }
 
-    /// <summary>Registra el identificador del disparo para avisar a los clientes cuando la bala física termina.</summary>
+    /// <summary>Registra el identificador del disparo para avisar a los clientes cuando la bala física termina</summary>
     public void SetServerPredictionKey(ulong clientId, uint sequence)
     {
         _key = new PredictionKey { ClientId = clientId, Sequence = sequence };

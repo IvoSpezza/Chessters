@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>Le da a un enemigo con Stats y Health el poder equiparles un arma y que persigan a l jugador mas cercano pata atacarlo.</summary>
+/// <summary>Le da a un enemigo con Stats y Health el poder equiparles un arma y que persigan al jugador mas cercano pata atacarlo</summary>
 [RequireComponent(typeof(NetworkObject), typeof(Stats), typeof(Health))]
 public class MonsterCombatAI : NetworkBehaviour
 {
@@ -72,20 +72,22 @@ public class MonsterCombatAI : NetworkBehaviour
         Vector3 direction = offset.normalized;
         Face(direction);
 
+        if (distance < _retreatDistance && Time.time < _nextAttackTime)
+        {
+            Move(-direction, _stats.GetStat(StatType.MoveSpeed) * _retreatSpeedMultiplier);
+            return;
+        }
         if (distance > _attackRange)
         {
             Move(direction, _stats.GetStat(StatType.MoveSpeed));
             return;
-        }
-
+        }        
         if (Time.time >= _nextAttackTime)
         {
-            Attack(weapon, targetHealth, direction);
-            return;
+            Attack(weapon, targetHealth, direction);            
         }
-
+         
         
-        if (distance < _retreatDistance) Move(-direction, _stats.GetStat(StatType.MoveSpeed) * _retreatSpeedMultiplier);
     }
 
     private bool TryGetNearestParticipant(out Health nearestHealth, out Vector3 nearestOffset, out float nearestDistance)

@@ -1,20 +1,20 @@
 using Unity.Netcode;
 using UnityEngine;
 
-/// <summary>Unificador de RPC.</summary>
+/// <summary>Unificador de RPC</summary>
 public partial class GameManager
 {
-    /// <summary>El jugador de turno ofrece parte del botín del combate a un posible ayudante.</summary>
+    /// <summary>El jugador de turno ofrece parte del botín del combate a un posible ayudante</summary>
     public void RequestCombatHelp(ulong targetClientId, int reward) => RequestCombatHelpRpc(targetClientId, reward);
 
-    /// <summary>El jugador solicitado acepta o rechaza la oferta de ayuda.</summary>
+    /// <summary>El jugador solicitado acepta o rechaza la oferta de ayuda</summary>
     public void RespondToCombatHelp(bool accept) => RespondToCombatHelpRpc(accept);
 
-    /// <summary>Solicita aplicar un consumible temporal al jugador o monstruo seleccionado.</summary>
+    /// <summary>Solicita aplicar un consumible temporal al jugador o monstruo seleccionado</summary>
     public void RequestCombatModifier(int itemId, ulong targetNetworkObjectId) =>
         ApplyCombatModifierRpc(itemId, targetNetworkObjectId);
 
-    /// <summary>El servidor anuncia el disparo para crear visuales locales sin replicar la trayectoria.</summary>
+    /// <summary>El servidor anuncia el disparo para crear visuales locales sin replicar la trayectoria</summary>
     public void ServerBroadcastProjectileLaunched(int rangedItemId, Vector3 position, Vector3 direction,
         ulong shooterClientId, uint sequence)
     {
@@ -23,7 +23,7 @@ public partial class GameManager
         ProjectileLaunchedRpc(rangedItemId, position, direction, shooterClientId, sequence);
     }
 
-    /// <summary>El servidor elimina la predicción/local visual cuando termina la bala física.</summary>
+    /// <summary>El servidor elimina la predicción/local visual cuando termina la bala física</summary>
     public void ServerBroadcastProjectileFinished(ulong shooterClientId, uint sequence)
     {
         if (!IsServer || shooterClientId == ulong.MaxValue) return;
@@ -162,7 +162,7 @@ public partial class GameManager
         ServerCheckAllReady();
     }
 
-    /// <summary>Temporalmente extiende la planificación para probar eventos de sabotaje.</summary>
+    /// <summary>Temporalmente extiende la planificación para probar eventos de sabotaje</summary>
     [Rpc(SendTo.Server)]
     public void DebugModifyCombatRpc(RpcParams rpcParams = default)
     {

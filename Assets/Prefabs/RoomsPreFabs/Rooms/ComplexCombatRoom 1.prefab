@@ -1336,7 +1336,7 @@ GameObject:
   - component: {fileID: 7185150605581351452}
   - component: {fileID: 4895581288209117783}
   m_Layer: 0
-  m_Name: ComplexCombatRoom
+  m_Name: ComplexCombatRoom 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

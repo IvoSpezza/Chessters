@@ -1,4 +1,4 @@
-/// <summary>El jugador de turno elige patear la puerta (KickDoorRpc). Los demas pueden seguir equipandose.</summary>
+/// <summary>El jugador de turno elige patear la puerta (KickDoorRpc). Los demas pueden seguir equipandose</summary>
 public class ChoosingDoorState : GameState
 {
     public ChoosingDoorState(GameManager game) : base(game) { }
