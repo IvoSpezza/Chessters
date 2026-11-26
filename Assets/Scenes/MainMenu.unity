@@ -319,6 +319,8 @@ GameObject:
   - component: {fileID: 211488841}
   - component: {fileID: 211488840}
   - component: {fileID: 211488839}
+  - component: {fileID: 211488843}
+  - component: {fileID: 211488844}
   - component: {fileID: 211488842}
   m_Layer: 0
   m_Name: NetworkManager
@@ -373,7 +375,7 @@ MonoBehaviour:
   NetworkManagerExpanded: 0
   NetworkConfig:
     ProtocolVersion: 0
-    NetworkTransport: {fileID: 211488839}
+    NetworkTransport: {fileID: 211488843}
     PlayerPrefab: {fileID: 3110789278595979986, guid: 073c79818718e744288a8a8c6f315f4c, type: 3}
     Prefabs:
       NetworkPrefabsLists:
@@ -440,6 +442,38 @@ MonoBehaviour:
     RefIds:
     - rid: -2
       type: {class: , ns: , asm: }
+--- !u!114 &211488843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 211488838}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca33505ecc44f3b42a282312602a6e7a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: RaybelCreation.Netcode.Transports.Steam::RaybelCreation.Netcode.Transports.Steam.SteamNetworkTransport
+  maxRemoteConnections: 5
+--- !u!114 &211488844
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 211488838}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c4fde6cb692bb348be521d11fbf5570, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SessionManager
+  maxPlayers: 6
+  minPlayers: 2
+  networkMode: 0
+  menuScene: MainMenu
+  lobbyScene: Lobby
+  gameScene: Game
+  bodyPrefab: {fileID: -7271499929996712896, guid: a679b2c7d9941b549962222aea2de15b, type: 3}
 --- !u!1 &346164801
 GameObject:
   m_ObjectHideFlags: 0
@@ -2622,6 +2656,50 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &1447164933
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1447164935}
+  - component: {fileID: 1447164934}
+  m_Layer: 0
+  m_Name: SteamBootstrap
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1447164934
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1447164933}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 55e8313936b7cbc4194f7be977155c7b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteamBootstrap
+--- !u!4 &1447164935
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1447164933}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1218.7324, y: 0, z: 444.42862}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1511753198
 GameObject:
   m_ObjectHideFlags: 0
@@ -2800,59 +2878,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1511753198}
   m_CullTransparentMesh: 1
---- !u!1 &1631669539
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1631669541}
-  - component: {fileID: 1631669540}
-  m_Layer: 0
-  m_Name: SessionConnectionManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1631669540
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1631669539}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c4fde6cb692bb348be521d11fbf5570, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SessionManager
-  maxPlayers: 6
-  minPlayers: 2
-  useRelay: 0
-  _connectionTypeEnum: 0
-  authProfile: 
-  menuScene: MainMenu
-  lobbyScene: Lobby
-  gameScene: Game
-  bodyPrefab: {fileID: -7271499929996712896, guid: a679b2c7d9941b549962222aea2de15b, type: 3}
---- !u!4 &1631669541
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1631669539}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 648.2, y: 273.7, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1655341410
 GameObject:
   m_ObjectHideFlags: 0
@@ -3384,5 +3409,5 @@ SceneRoots:
   - {fileID: 2000233260}
   - {fileID: 1186969557}
   - {fileID: 211488841}
-  - {fileID: 1631669541}
   - {fileID: 1243449615}
+  - {fileID: 1447164935}
