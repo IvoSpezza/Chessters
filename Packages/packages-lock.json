@@ -1,5 +1,22 @@
 {
   "dependencies": {
+    "com.raybelcreation.netcode.transport.steam": {
+      "version": "https://github.com/RaybelGames/Steam-Network-Transport-for-NGO.git#v0.1.2",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.netcode.gameobjects": "2.13.1",
+        "com.rlabrecque.steamworks.net": "2025.164.1"
+      },
+      "hash": "cb9add88b5ec192abe4c56c6d4ff79e117bb86f5"
+    },
+    "com.rlabrecque.steamworks.net": {
+      "version": "https://github.com/rlabrecque/Steamworks.NET.git?path=/com.rlabrecque.steamworks.net#c21a8f0e31c56ae8707130967faf491f7dd7c0d8",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "c21a8f0e31c56ae8707130967faf491f7dd7c0d8"
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.17",
       "depth": 0,
